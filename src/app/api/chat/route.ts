@@ -4,6 +4,10 @@ import me from '@/data/me.json';
 
 const ollama = new Ollama({ host: 'http://127.0.0.1:11434' });
 
+export async function GET() {
+  return new Response("Digital-Me is running.");
+}
+
 export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
