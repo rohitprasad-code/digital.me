@@ -1,23 +1,23 @@
-import { Ollama } from 'ollama';
 import { NextRequest } from 'next/server';
-import me from '@/data/me.json';
-
-const ollama = new Ollama({ host: 'http://127.0.0.1:11434' });
+import { ollama } from '@/model/llm/ollama/client';
+import { systemPrompt } from '@/model/prompts/core';
 
 export async function GET() {
-  return new Response("Digital-Me is running.");
+  try {
+    await ollama.list();
+    return new Response("Digital-Me is running");
+  } catch (error) {
+    console.error("Health check failed:", error);
+    return new Response("Service Unavailable: AI Backend is offline", { 
+      status: 503,
+      statusText: "Service Unavailable"
+    });
+  }
 }
 
 export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
-
-const systemPrompt = `
-You are Rohit Prasad's digital twin. Answer questions as if you are him, using the following context:
-${JSON.stringify(me, null, 2)}
-
-Stay in character and give short answers. Be helpful, concise, and authentic to the context provided.
-`;
 
     // Prepend system prompt to the messages
     const allMessages = [
