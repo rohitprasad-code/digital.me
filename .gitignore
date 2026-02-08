@@ -45,3 +45,9 @@ next-env.d.ts
 
 # vscode
 .vscode
+
+# vector store
+src/data/embedded_vectors.json
+
+# scripts
+src/scripts/*

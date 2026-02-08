@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server';
 import { ollama } from '@/model/llm/ollama/client';
 import { systemPrompt } from '@/model/prompts/core';
+import { VectorStore } from '@/memory/vector_store';
+
+const vectorStore = new VectorStore();
 
 export async function GET() {
   try {
@@ -19,9 +22,27 @@ export async function POST(req: NextRequest) {
   try {
     const { messages } = await req.json();
 
-    // Prepend system prompt to the messages
+    let contextString = "";
+    if (messages.length > 0) {
+        const lastMessage = messages[messages.length - 1];
+        if (lastMessage.role === 'user') {
+            try {
+                await vectorStore.load(); 
+                const results = await vectorStore.search(lastMessage.content, 10);
+                
+                if (results.length > 0) {
+                    const retrievedContent = results.map(r => r.doc.content).join('\n---\n');
+                    contextString = `\n\nRelevant Context:\n${retrievedContent}`;
+                    console.log(`Retrieved ${results.length} relevant documents for context.`);
+                }
+            } catch (err) {
+                console.error("Failed to retrieve context:", err);
+            }
+        }
+    }
+
     const allMessages = [
-      { role: 'system', content: systemPrompt },
+      { role: 'system', content: systemPrompt + contextString },
       ...messages,
     ];
 

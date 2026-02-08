@@ -1,10 +1,11 @@
-import { ollama } from '../model/llm/ollama/client';
-import { systemPrompt } from '../model/prompts/core';
 import * as readline from 'readline';
 import chalk from 'chalk';
 
+const API_URL = 'http://localhost:3000/api';
+
 export async function startChat() {
     console.log(chalk.blue('Starting chat with Digital Me... (Type "exit" to quit)'));
+    console.log(chalk.yellow('Ensure the Next.js server is running at ' + API_URL));
 
     const rl = readline.createInterface({
         input: process.stdin,
@@ -12,9 +13,9 @@ export async function startChat() {
         prompt: chalk.green('You: '),
     });
 
-    const messages: { role: 'system' | 'user' | 'assistant'; content: string }[] = [
-        { role: 'system', content: systemPrompt },
-    ];
+    // The API handles the system prompt and context injection.
+    // We only need to maintain the conversation history of the user and assistant.
+    const messages: { role: 'user' | 'assistant'; content: string }[] = [];
 
     rl.prompt();
 
@@ -33,31 +34,44 @@ export async function startChat() {
         messages.push({ role: 'user', content: input });
 
         try {
-            // console.log(chalk.gray('Sending request to Ollama...'));
-            
             process.stdout.write(chalk.cyan('AI: '));
 
-            const response = await ollama.chat({
-                model: 'llama3', 
-                messages: messages,
-                stream: true,
+            const response = await fetch(API_URL, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ messages }),
             });
 
-            let fullResponse = '';
-            for await (const part of response) {
-                process.stdout.write(part.message.content);
-                fullResponse += part.message.content;
+            if (!response.ok) {
+                throw new Error(`API returned ${response.status}: ${response.statusText}`);
             }
-            console.log(); // Newline after stream
 
-            
-            // Add a new line after the stream finishes
+            if (!response.body) {
+                throw new Error('No response body received');
+            }
+
+            const reader = response.body.getReader();
+            const decoder = new TextDecoder();
+            let fullResponse = '';
+
+            while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                
+                const chunk = decoder.decode(value, { stream: true });
+                process.stdout.write(chunk);
+                fullResponse += chunk;
+            }
+            console.log(); 
             console.log(); 
             
             messages.push({ role: 'assistant', content: fullResponse });
 
         } catch (error) {
-            console.error(chalk.red('\nError calling Ollama:'), error);
+            console.error(chalk.red('\nError calling API:'), error);
+            console.error(chalk.yellow('Make sure the server is running with `npm run dev`'));
         }
 
         rl.prompt();
