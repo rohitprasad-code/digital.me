@@ -7,17 +7,21 @@
     "build": "next build",
     "start": "next start",
     "lint": "eslint",
-    "test": "vitest"
+    "test": "vitest",
+    "cli": "TS_NODE_PROJECT=tsconfig.cli.json ts-node -r tsconfig-paths/register src/cli/index.ts"
   },
   "dependencies": {
     "@types/pdf-parse": "^1.1.5",
     "@types/uuid": "^10.0.0",
+    "chalk": "^5.6.2",
+    "commander": "^14.0.3",
     "compute-cosine-similarity": "^1.1.0",
     "next": "16.1.6",
     "ollama": "^0.6.3",
     "pdf-parse": "^2.4.5",
     "react": "19.2.3",
     "react-dom": "19.2.3",
+    "ts-node": "^10.9.2",
     "uuid": "^13.0.0"
   },
   "devDependencies": {
@@ -29,6 +33,7 @@
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
     "tailwindcss": "^4",
+    "tsconfig-paths": "^4.2.0",
     "typescript": "^5",
     "vitest": "^4.0.18"
   }
