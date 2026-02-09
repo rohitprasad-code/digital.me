@@ -1,11 +1,11 @@
 import * as readline from 'readline';
 import chalk from 'chalk';
 
-const API_URL = 'http://localhost:3000/api';
+const DEFAULT_API_URL = 'http://localhost:3000/api';
 
-export async function startChat() {
+export async function startChat(apiUrl: string = DEFAULT_API_URL) {
     console.log(chalk.blue('Starting chat with Digital Me... (Type "exit" to quit)'));
-    console.log(chalk.yellow('Ensure the Next.js server is running at ' + API_URL));
+    console.log(chalk.yellow('Ensure the Next.js server is running at ' + apiUrl));
 
     const rl = readline.createInterface({
         input: process.stdin,
@@ -36,7 +36,7 @@ export async function startChat() {
         try {
             process.stdout.write(chalk.cyan('AI: '));
 
-            const response = await fetch(API_URL, {
+            const response = await fetch(apiUrl, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',

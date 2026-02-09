@@ -1,6 +1,10 @@
 #!/usr/bin/env node
 import { Command } from 'commander';
+import { loadEnvConfig } from '@next/env';
 import { startChat } from './chat';
+
+// Load environment variables from .env* files
+loadEnvConfig(process.cwd());
 
 const program = new Command();
 
@@ -12,8 +16,10 @@ program
 program
     .command('chat')
     .description('Start a chat session with Digital Me')
-    .action(() => {
-        startChat();
+    .option('-u, --url <url>', 'API URL to connect to')
+    .action((options) => {
+        const apiUrl = options.url || process.env.DIGITAL_ME_API_URL;
+        startChat(apiUrl);
     });
 
 program.parse(process.argv);
