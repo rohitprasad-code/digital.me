@@ -5,6 +5,7 @@ import { VectorStore } from './vector_store/index';
 
 
 import { ollama } from '../model/llm/ollama/client';
+import { GitHubClient } from '../integrations/github/client';
 
 // Interface for structured resume data
 interface ResumeData {
@@ -71,6 +72,40 @@ async function parseResumeWithLLM(text: string): Promise<ResumeData | null> {
     console.error("LLM Parsing failed:", error);
     return null;
   }
+}
+
+async function ingestGitHub(vectorStore: VectorStore) {
+    console.log("Ingesting GitHub data...");
+    try {
+        const github = new GitHubClient();
+        
+        // 1. Profile
+        const profile = await github.getProfile();
+        if (profile) {
+            const content = `GitHub Profile: ${profile.name} (@${profile.login})\nBio: ${profile.bio}\nStats: ${profile.public_repos} repos, ${profile.followers} followers\nURL: ${profile.html_url}`;
+            await vectorStore.addDocument(content, { source: 'github', type: 'github_profile' });
+        }
+
+        // 2. Repos
+        const repos = await github.getRecentRepos(5);
+        for (const repo of repos) {
+            const content = `GitHub Repository: ${repo.name}\nDescription: ${repo.description}\nLanguage: ${repo.language}\nStars: ${repo.stars}\nUpdated: ${repo.updated_at}\nURL: ${repo.html_url}`; // Fixed access 
+            await vectorStore.addDocument(content, { source: 'github', type: 'github_repo', name: repo.name });
+        }
+
+        // 3. Activity
+        const activities = await github.getRecentActivity(10);
+        if (activities.length > 0) {
+             const activitySummary = activities.map(a => `- ${a.type} on ${a.repo} at ${a.created_at}`).join('\n');
+             const content = `Recent GitHub Activity:\n${activitySummary}`;
+             await vectorStore.addDocument(content, { source: 'github', type: 'github_activity' });
+        }
+        
+        console.log("Successfully ingested GitHub data.");
+
+    } catch (error) {
+        console.warn("Skipping GitHub ingestion:", error instanceof Error ? error.message : "Unknown error");
+    }
 }
 
 async function ingest() {
@@ -186,7 +221,16 @@ async function ingest() {
     console.error('Error ingesting resume.pdf:', error);
   }
 
+  // 3. Ingest GitHub
+  await ingestGitHub(vectorStore);
+
   console.log('Ingestion complete!');
 }
 
-ingest().catch(console.error);
+// Export ingest function for CLI usage
+export { ingest };
+
+// Only run if executed directly
+if (require.main === module) {
+  ingest().catch(console.error);
+}

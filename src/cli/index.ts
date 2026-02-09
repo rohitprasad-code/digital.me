@@ -2,6 +2,7 @@
 import { Command } from 'commander';
 import { loadEnvConfig } from '@next/env';
 import { startChat } from './chat';
+import { ingest } from '../memory/ingest';
 
 // Load environment variables from .env* files
 loadEnvConfig(process.cwd());
@@ -20,6 +21,19 @@ program
     .action((options) => {
         const apiUrl = options.url || process.env.DIGITAL_ME_API_URL;
         startChat(apiUrl);
+    });
+
+program
+    .command('ingest')
+    .description('Ingest data from all sources (including GitHub)')
+    .action(async () => {
+        try {
+            console.log("Starting ingestion process...");
+            await ingest();
+        } catch (error) {
+            console.error('Ingestion failed:', error);
+            process.exit(1);
+        }
     });
 
 program.parse(process.argv);
