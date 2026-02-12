@@ -1,6 +1,4 @@
-import { Ollama } from 'ollama';
-
-const ollama = new Ollama({ host: 'http://127.0.0.1:11434' });
+import { ollama } from '@/model/llm/ollama/client';
 
 export async function GET() {
   try {
