@@ -46,8 +46,8 @@ Digital Me is an AI-powered personal digital twin. It's designed to ingest your 
     ```
 
 4.  **Prepare Data**:
-    - Place your resume at `src/memory/static/resume.pdf`.
-    - Update `src/memory/static/me.json` with your personal details.
+    - Place your resume at `memory/static/resume.pdf`.
+    - Update `memory/static/me.json` with your personal details.
 
 ## Quick Start
 
@@ -73,8 +73,8 @@ Digital Me is an AI-powered personal digital twin. It's designed to ingest your 
 
 ## Project Structure
 
-- `src/app/api`: The Next.js API route handling chat requests and RAG logic.
-- `src/cli`: The command-line interface tools.
-- `src/memory`: Vector store and data ingestion logic.
-- `src/integrations`: Connectors for external services (e.g., GitHub).
-- `src/model`: LLM client and prompt management.
+- `app/api`: The Next.js API route handling chat requests and RAG logic.
+- `cli`: The command-line interface tools.
+- `memory`: Vector store and data ingestion logic.
+- `integrations`: Connectors for external services (e.g., GitHub).
+- `model`: LLM client and prompt management.
