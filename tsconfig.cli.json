@@ -5,6 +5,6 @@
     "moduleResolution": "node",
     "noEmit": false
   },
-  "include": ["src/cli/**/*"],
+  "include": ["cli/**/*"],
   "exclude": ["node_modules"]
 }

@@ -8,7 +8,7 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "cli": "TS_NODE_PROJECT=tsconfig.cli.json ts-node -r tsconfig-paths/register src/cli/index.ts"
+    "cli": "TS_NODE_PROJECT=tsconfig.cli.json ts-node -r tsconfig-paths/register cli/index.ts"
   },
   "dependencies": {
     "@octokit/rest": "^22.0.1",

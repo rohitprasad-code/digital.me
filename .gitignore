@@ -50,6 +50,9 @@ next-env.d.ts
 src/scripts/*
 
 # ignore all json and pdf files which is inside memory directory or recursively
-src/memory/**/*.json
-src/memory/**/*.pdf
-src/memory/**/*.txt
+memory/**/*.json
+memory/**/*.pdf
+memory/**/*.txt
+
+# data
+data/*.json
