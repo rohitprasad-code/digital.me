@@ -16,7 +16,7 @@ export class VectorStore {
   private readonly storageFile: string;
 
   constructor(storageFile: string = 'embedded_vectors.json') {
-    this.storageFile = path.resolve(process.cwd(), 'src/data', storageFile);
+    this.storageFile = path.resolve(process.cwd(), 'data', storageFile);
   }
 
   async addDocument(content: string, metadata: Record<string, any> = {}): Promise<Document> {

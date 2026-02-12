@@ -81,7 +81,7 @@ async function ingest() {
 
   // 1. Ingest me.json
   try {
-    const meJsonPath = path.resolve(process.cwd(), "src/memory/static/me.json");
+    const meJsonPath = path.resolve(process.cwd(), "memory/static/me.json");
     const meJsonContent = await fs.readFile(meJsonPath, "utf-8");
     const meData = JSON.parse(meJsonContent);
 
@@ -119,7 +119,7 @@ async function ingest() {
   try {
     const resumePath = path.resolve(
       process.cwd(),
-      "src/memory/static/resume.pdf",
+      "memory/static/resume.pdf",
     );
     const resumeBuffer = await fs.readFile(resumePath);
     const parser = new PDFParse({ data: resumeBuffer });
@@ -134,7 +134,7 @@ async function ingest() {
       // Save structured data to JSON file
       const resumeJsonPath = path.resolve(
         process.cwd(),
-        "src/memory/static/resume.json",
+        "memory/static/resume.json",
       );
       await fs.writeFile(
         resumeJsonPath,
@@ -287,7 +287,7 @@ async function ingestGitHub(vectorStore: VectorStore) {
     // Save GitHub data to JSON file
     const githubJsonPath = path.resolve(
       process.cwd(),
-      "src/memory/dynamic/github.json",
+      "memory/dynamic/github.json",
     );
     await fs.mkdir(path.dirname(githubJsonPath), { recursive: true });
     await fs.writeFile(githubJsonPath, JSON.stringify(githubData, null, 2));

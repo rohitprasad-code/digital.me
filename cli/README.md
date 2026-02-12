@@ -1,6 +1,6 @@
 # Digital Me CLI
 
-The `src/cli` module provides the command-line interface for interacting with the Digital Me system. It allows you to chat with your digital twin and manage the data ingestion process.
+The `cli` module provides the command-line interface for interacting with the Digital Me system. It allows you to chat with your digital twin and manage the data ingestion process.
 
 ## Commands
 
@@ -13,7 +13,7 @@ Starts an interactive chat session with the Digital Me AI.
 ```bash
 npm run cli chat
 # OR
-npx ts-node -r tsconfig-paths/register src/cli/index.ts chat
+npx ts-node -r tsconfig-paths/register cli/index.ts chat
 ```
 
 **Options:**
@@ -38,8 +38,8 @@ npm run cli ingest
 **What it does:**
 
 1.  **Clears Vector Store**: Resets the in-memory vector database.
-2.  **Ingests Static Data**: Loads `src/memory/static/me.json` (Profile, Skills, Interests).
-3.  **Parses Resume**: Reads `src/memory/static/resume.pdf`, parses text, and uses LLM to structure it into JSON (Education, Experience, Projects).
+2.  **Ingests Static Data**: Loads `memory/static/me.json` (Profile, Skills, Interests).
+3.  **Parses Resume**: Reads `memory/static/resume.pdf`, parses text, and uses LLM to structure it into JSON (Education, Experience, Projects).
 4.  **Fetches GitHub Data**: Connects to GitHub API (if tokens are present) to fetch your profile, recent repos, and activity.
 5.  **Indexes Data**: Chunks and embeds all data into the vector store for retrieval.
 
@@ -69,5 +69,5 @@ The CLI respects the following environment variables (loaded from `.env.local`):
 To add a new command:
 
 1.  Create a new function/file for the command logic.
-2.  Import it in `src/cli/index.ts`.
+2.  Import it in `cli/index.ts`.
 3.  Register it with `program.command('new-command')...`.
