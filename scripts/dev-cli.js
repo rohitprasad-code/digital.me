@@ -1,5 +1,5 @@
 const { spawn } = require('child_process');
-const { openSync } = require('fs');
+const { openSync, mkdirSync } = require('fs');
 const net = require('net');
 
 const RETRY_MS = 5000;
@@ -21,8 +21,9 @@ const waitForPort = (port) => new Promise((resolve, reject) => {
     console.log('Starting dev server...');
     
     // Redirect server logs to a file to keep CLI clean
-    const out = openSync('.next-dev.log', 'w');
-    const err = openSync('.next-dev.log', 'w');
+    mkdirSync('.logs', { recursive: true });
+    const out = openSync('.logs/next-dev.log', 'w');
+    const err = openSync('.logs/next-dev.log', 'w');
     
     const server = spawn('npm', ['run', 'dev'], { 
         detached: true, 
