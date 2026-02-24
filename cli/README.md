@@ -1,73 +1,62 @@
-# Digital Me CLI
+# CLI — Command-Line Interface
 
-The `cli` module provides the command-line interface for interacting with the Digital Me system. It allows you to chat with your digital twin and manage the data ingestion process.
+The `cli/` module provides the terminal interface for Digital Me. Use it to chat with your digital twin or ingest data into the vector store.
 
 ## Commands
 
 ### `chat`
 
-Starts an interactive chat session with the Digital Me AI.
-
-**Usage:**
+Starts an interactive chat session that streams responses from the API.
 
 ```bash
 npm run cli chat
-# OR
-npx ts-node -r tsconfig-paths/register cli/index.ts chat
 ```
 
-**Options:**
+| Option            | Description                                                                         |
+| ----------------- | ----------------------------------------------------------------------------------- |
+| `-u, --url <url>` | Override the API URL (default: `DIGITAL_ME_API_URL` or `http://localhost:3000/api`) |
 
-- `-u, --url <url>`: Override the API URL (defaults to `http://localhost:3000/api` or `DIGITAL_ME_API_URL` env var).
+- Type your message and press **Enter** to send.
+- Type `exit` to quit.
 
-**Interaction:**
-
-- Type your message and press Enter to send.
-- Type `exit` to quit the session.
+> **Note:** The API server (`npm run dev`) must be running before starting a chat session.
 
 ### `ingest`
 
-Triggers the data ingestion pipeline to update the AI's knowledge base.
-
-**Usage:**
+Runs the full data ingestion pipeline to build / rebuild the vector store.
 
 ```bash
 npm run cli ingest
 ```
 
-**What it does:**
+**Pipeline steps:**
 
-1.  **Clears Vector Store**: Resets the in-memory vector database.
-2.  **Ingests Static Data**: Loads `memory/static/me.json` (Profile, Skills, Interests).
-3.  **Parses Resume**: Reads `memory/static/resume.pdf`, parses text, and uses LLM to structure it into JSON (Education, Experience, Projects).
-4.  **Fetches GitHub Data**: Connects to GitHub API (if tokens are present) to fetch your profile, recent repos, and activity.
-5.  **Indexes Data**: Chunks and embeds all data into the vector store for retrieval.
+1. Clears the existing vector store
+2. Loads data from `public/` directory
+3. Fetches GitHub data (profile, repos, recent activity)
+4. Fetches Strava data (profile, recent activities)
+5. Chunks, embeds, and indexes everything into the vector store
 
-## Architecture
+## File Structure
 
-The CLI is built using:
+| File       | Purpose                                                                                  |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| `index.ts` | CLI entrypoint — defines commands via [Commander.js](https://github.com/tj/commander.js) |
+| `chat.ts`  | Chat loop — handles user input, API calls, and response streaming                        |
 
-- **Commander.js**: for command parsing and routing.
-- **Inquirer / Readline**: for interactive input handling.
-- **TS-Node**: for running TypeScript directly without a build step.
+## Environment Variables
 
-### File Structure
+Loaded automatically from `.env.local`:
 
-- `index.ts`: Entry point. Defines commands and options.
-- `chat.ts`: Implementation of the chat loop. Handles API communication and response streaming.
+| Variable              | Used By                              |
+| --------------------- | ------------------------------------ |
+| `DIGITAL_ME_API_URL`  | `chat` — API endpoint override       |
+| `GITHUB_TOKEN`        | `ingest` — GitHub API authentication |
+| `GITHUB_USERNAME`     | `ingest` — GitHub profile to fetch   |
+| `STRAVA_ACCESS_TOKEN` | `ingest` — Strava API authentication |
 
-## Configuration
+## Adding a New Command
 
-The CLI respects the following environment variables (loaded from `.env.local`):
-
-- `DIGITAL_ME_API_URL`: The base URL of the Next.js API (default: `http://localhost:3000/api`).
-- `GITHUB_TOKEN`: For the `ingest` command.
-- `GITHUB_USERNAME`: For the `ingest` command.
-
-## Development
-
-To add a new command:
-
-1.  Create a new function/file for the command logic.
-2.  Import it in `cli/index.ts`.
-3.  Register it with `program.command('new-command')...`.
+1. Create a new file for the command logic (e.g., `stats.ts`)
+2. Import it in `index.ts`
+3. Register with `program.command('stats')...`
