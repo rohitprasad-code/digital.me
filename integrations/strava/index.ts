@@ -55,7 +55,7 @@ export async function ingestStrava(vectorStore: VectorStore) {
     // Save Strava data to JSON file
     const stravaJsonPath = path.resolve(
       process.cwd(),
-      "memory/dynamic/strava.json",
+      "memory/memory_type/dynamic/strava.json",
     );
     await fs.mkdir(path.dirname(stravaJsonPath), { recursive: true });
     await fs.writeFile(stravaJsonPath, JSON.stringify(stravaData, null, 2));

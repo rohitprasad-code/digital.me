@@ -111,7 +111,7 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
     }
 
     // Save to memory/static for representing state
-    const targetPath = path.resolve(process.cwd(), `memory/static/${filename}`);
+    const targetPath = path.resolve(process.cwd(), `memory/memory_type/static/${filename}`);
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, JSON.stringify(data, null, 2));
 
@@ -240,7 +240,7 @@ async function processGenericText(
         const jsonName = filename + ".json";
         const staticPath = path.resolve(
           process.cwd(),
-          `memory/static/${jsonName}`,
+          `memory/memory_type/static/${jsonName}`,
         );
         await fs.mkdir(path.dirname(staticPath), { recursive: true });
         await fs.writeFile(staticPath, JSON.stringify(structuredData, null, 2));

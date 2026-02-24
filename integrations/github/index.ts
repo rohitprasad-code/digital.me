@@ -53,7 +53,7 @@ export async function ingestGitHub(vectorStore: VectorStore) {
     // Save GitHub data to JSON file
     const githubJsonPath = path.resolve(
       process.cwd(),
-      "memory/dynamic/github.json"
+      "memory/memory_type/dynamic/github.json"
     );
     await fs.mkdir(path.dirname(githubJsonPath), { recursive: true });
     await fs.writeFile(githubJsonPath, JSON.stringify(githubData, null, 2));
