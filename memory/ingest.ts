@@ -4,6 +4,12 @@ const { PDFParse } = require("pdf-parse");
 import { VectorStore } from "./vector_store/index";
 import { ollama } from "../model/llm/ollama/client";
 import { integrators } from "../integrations";
+import { processDocument } from "./data_processing/index";
+import {
+  crawlDirectory,
+  determineFileRole,
+} from "./data_processing/directory_crawler";
+import { UnstructuredConverter } from "./data_processing/unstructured_converter";
 
 // Interface for structured resume data
 interface ResumeData {
@@ -77,7 +83,7 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
     const filename = path.basename(filePath);
     const content = await fs.readFile(filePath, "utf-8");
     const data = JSON.parse(content);
-    
+
     // We can assume format of me.json style or just add whole JSON string
     if (data.profile) {
       await vectorStore.addDocument(
@@ -92,10 +98,10 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
       });
     }
     if (data.interests) {
-      await vectorStore.addDocument(
-        `Interests: ${data.interests.join(", ")}`,
-        { source: filename, type: "interests" },
-      );
+      await vectorStore.addDocument(`Interests: ${data.interests.join(", ")}`, {
+        source: filename,
+        type: "interests",
+      });
     }
     if (data.goals) {
       await vectorStore.addDocument(`Goals: ${data.goals.join(", ")}`, {
@@ -126,74 +132,148 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
     const structuredData = await parseResumeWithLLM(text);
 
     if (structuredData) {
-        console.log(`Successfully parsed ${filename} into structured data.`);
-        
-        // Save structured data to JSON file
-        const jsonName = filename.replace(/\.pdf$/i, '.json');
-        const resumeJsonPath = path.resolve(process.cwd(), `memory/static/${jsonName}`);
-        await fs.mkdir(path.dirname(resumeJsonPath), { recursive: true });
-        await fs.writeFile(resumeJsonPath, JSON.stringify(structuredData, null, 2));
-        console.log(`Saved structured data to ${resumeJsonPath}`);
+      console.log(`Successfully parsed ${filename} into structured data.`);
 
-        // Ingest Experience
-        if (structuredData.experience) {
-            for (const exp of structuredData.experience) {
-                const content = `Experience at ${exp.company} as ${exp.role} (${exp.duration}):\n${exp.details.join("\n")}`;
-                await vectorStore.addDocument(content, { source: filename, type: "experience", company: exp.company });
-                const summary = `Work History: Employed at ${exp.company} as ${exp.role} since ${exp.duration.split("-")[0].trim()}.`;
-                await vectorStore.addDocument(summary, { source: filename, type: "experience_summary", company: exp.company });
-            }
-        }
+      // Save structured data to JSON file
+      const jsonName = filename.replace(/\.pdf$/i, ".json");
+      const resumeJsonPath = path.resolve(
+        process.cwd(),
+        `memory/memory_type/static/${jsonName}`,
+      );
+      await fs.mkdir(path.dirname(resumeJsonPath), { recursive: true });
+      await fs.writeFile(
+        resumeJsonPath,
+        JSON.stringify(structuredData, null, 2),
+      );
+      console.log(`Saved structured data to ${resumeJsonPath}`);
 
-        // Ingest Projects
-        if (structuredData.projects) {
-            for (const proj of structuredData.projects) {
-                const content = `Project: ${proj.name}\nTech Stack: ${proj.technologies.join(", ")}\nDescription: ${proj.description}`;
-                await vectorStore.addDocument(content, { source: filename, type: "project", name: proj.name });
-            }
+      // Ingest Experience
+      if (structuredData.experience) {
+        for (const exp of structuredData.experience) {
+          const content = `Experience at ${exp.company} as ${exp.role} (${exp.duration}):\n${exp.details.join("\n")}`;
+          await vectorStore.addDocument(content, {
+            source: filename,
+            type: "experience",
+            company: exp.company,
+          });
+          const summary = `Work History: Employed at ${exp.company} as ${exp.role} since ${exp.duration.split("-")[0].trim()}.`;
+          await vectorStore.addDocument(summary, {
+            source: filename,
+            type: "experience_summary",
+            company: exp.company,
+          });
         }
+      }
 
-        // Ingest Education
-        if (structuredData.education) {
-            for (const edu of structuredData.education) {
-                const content = `Education: ${JSON.stringify(edu)}`;
-                await vectorStore.addDocument(content, { source: filename, type: "education" });
-            }
+      // Ingest Projects
+      if (structuredData.projects) {
+        for (const proj of structuredData.projects) {
+          const content = `Project: ${proj.name}\nTech Stack: ${proj.technologies.join(", ")}\nDescription: ${proj.description}`;
+          await vectorStore.addDocument(content, {
+            source: filename,
+            type: "project",
+            name: proj.name,
+          });
         }
+      }
 
-        // Ingest Skills
-        if (structuredData.skills) {
-            for (const skillCat of structuredData.skills) {
-                const content = `Resume Skills (${skillCat.category}): ${skillCat.items.join(", ")}`;
-                await vectorStore.addDocument(content, { source: filename, type: "skills" });
-            }
+      // Ingest Education
+      if (structuredData.education) {
+        for (const edu of structuredData.education) {
+          const content = `Education: ${JSON.stringify(edu)}`;
+          await vectorStore.addDocument(content, {
+            source: filename,
+            type: "education",
+          });
         }
+      }
+
+      // Ingest Skills
+      if (structuredData.skills) {
+        for (const skillCat of structuredData.skills) {
+          const content = `Resume Skills (${skillCat.category}): ${skillCat.items.join(", ")}`;
+          await vectorStore.addDocument(content, {
+            source: filename,
+            type: "skills",
+          });
+        }
+      }
     } else {
-        console.warn(`LLM parsing failed for ${filename}, falling back to chunking.`);
-        const lines = text.split("\n");
-        const chunks: string[] = [];
-        let currentChunk = "";
-        const CHUNK_SIZE = 500;
-        const OVERLAP = 100;
-        for (const line of lines) {
-            if ((currentChunk + line).length > CHUNK_SIZE) {
-                chunks.push(currentChunk.trim());
-                currentChunk = currentChunk.slice(-OVERLAP) + "\n" + line;
-            } else {
-                currentChunk += (currentChunk ? "\n" : "") + line;
-            }
-        }
-        if (currentChunk.trim().length > 0) chunks.push(currentChunk.trim());
+      console.warn(
+        `LLM parsing failed for ${filename}, falling back to structure-aware chunking.`,
+      );
+      const chunks = processDocument(text, filename);
 
-        for (const chunk of chunks) {
-            if (chunk.length > 50) {
-                await vectorStore.addDocument(chunk, { source: filename, fallback: true });
-            }
+      for (const chunk of chunks) {
+        if (chunk.content.trim().length > 0) {
+          await vectorStore.addDocument(chunk.content, {
+            source: filename,
+            fallback: true,
+            ...chunk.metadata,
+          });
         }
-        console.log(`Ingested ${filename} via fallback (${chunks.length} chunks)`);
+      }
+      console.log(
+        `Ingested ${filename} via structure-aware fallback (${chunks.length} chunks)`,
+      );
     }
   } catch (error) {
     console.error(`Error ingesting static PDF ${filePath}:`, error);
+  }
+}
+
+async function processGenericText(
+  filePath: string,
+  role: string,
+  vectorStore: VectorStore,
+) {
+  try {
+    const filename = path.basename(filePath);
+    const content = await fs.readFile(filePath, "utf-8");
+
+    if (role === "unstructured") {
+      const structuredData = await UnstructuredConverter.extractStructuredData(
+        content,
+        filename,
+      );
+      if (structuredData) {
+        const jsonName = filename + ".json";
+        const staticPath = path.resolve(
+          process.cwd(),
+          `memory/static/${jsonName}`,
+        );
+        await fs.mkdir(path.dirname(staticPath), { recursive: true });
+        await fs.writeFile(staticPath, JSON.stringify(structuredData, null, 2));
+        console.log(
+          `Saved extracted structure for ${filename} to ${staticPath}`,
+        );
+
+        const metaContent = `Metadata for ${filename}:\nTitle: ${structuredData.title}\nSummary: ${structuredData.summary}\nTopics: ${(structuredData.topics || []).join(", ")}`;
+        await vectorStore.addDocument(metaContent, {
+          source: filename,
+          type: "metadata",
+        });
+      }
+    }
+
+    const chunks = processDocument(content, filename);
+
+    for (const chunk of chunks) {
+      if (chunk.content.trim().length > 0) {
+        await vectorStore.addDocument(chunk.content, {
+          source: filename,
+          type: role === "code" ? "code" : "document",
+          fallback: false,
+          ...chunk.metadata,
+        });
+      }
+    }
+
+    console.log(
+      `Ingested ${filename} via structure-aware chunking (${chunks.length} chunks)`,
+    );
+  } catch (error) {
+    console.error(`Error processing generic text ${filePath}:`, error);
   }
 }
 
@@ -203,39 +283,45 @@ async function ingest() {
   console.log("Clearing existing vector store...");
   await vectorStore.clear();
 
-  // 1. Process all static documents in `public/documents/`
-  console.log("Processing static files in public/documents/...");
-  const publicDocsPath = path.resolve(process.cwd(), "public/documents");
-  
+  // 1. Process all static documents in `public/`
+  console.log("Processing static files in public/...");
+  const publicPath = path.resolve(process.cwd(), "public");
+
   try {
-    const files = await fs.readdir(publicDocsPath);
-    for (const file of files) {
-      const filePath = path.join(publicDocsPath, file);
-      const stat = await fs.stat(filePath);
-      if (stat.isFile()) {
-        const ext = path.extname(file).toLowerCase();
-        if (ext === ".json") {
-            await processStaticJson(filePath, vectorStore);
-        } else if (ext === ".pdf") {
-            await processStaticPdf(filePath, vectorStore);
-        } else {
-            console.log(`Skipping unsupported file format: ${file}`);
-        }
+    const files = await crawlDirectory(publicPath);
+    for (const filePath of files) {
+      const role = determineFileRole(filePath);
+      const ext = path.extname(filePath).toLowerCase();
+
+      if (role === "pdf") {
+        await processStaticPdf(filePath, vectorStore);
+      } else if (role === "structured" && ext === ".json") {
+        await processStaticJson(filePath, vectorStore);
+      } else if (
+        role === "code" ||
+        role === "unstructured" ||
+        (role === "structured" && ext !== ".json")
+      ) {
+        await processGenericText(filePath, role, vectorStore);
+      } else {
+        console.log(`Skipping unknown or unsupported file format: ${filePath}`);
       }
     }
   } catch (err) {
-    console.warn("Could not read public/documents. Directory might not exist or is empty.");
+    console.warn(
+      "Could not read public directory. Might not exist or is empty.",
+    );
   }
 
   // 2. Process all dynamic integrations
   console.log("Processing dynamic integrations...");
   for (const integrator of integrators) {
-      try {
-          console.log(`Triggering integrator: ${integrator.name}`);
-          await integrator.ingest(vectorStore);
-      } catch (err) {
-          console.error(`Intgrator ${integrator.name} failed:`, err);
-      }
+    try {
+      console.log(`Triggering integrator: ${integrator.name}`);
+      await integrator.ingest(vectorStore);
+    } catch (err) {
+      console.error(`Intgrator ${integrator.name} failed:`, err);
+    }
   }
 
   console.log("Ingestion complete!");

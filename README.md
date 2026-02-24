@@ -78,3 +78,11 @@ Digital Me is an AI-powered personal digital twin. It's designed to ingest your 
 - `memory`: Vector store and data ingestion logic.
 - `integrations`: Connectors for external services (e.g., GitHub).
 - `model`: LLM client and prompt management.
+
+## Future Steps / Roadmap
+
+- **Expanded Integrations**: Add Strava, LinkedIn, and Instagram to the dynamic memory pipeline.
+- **Dynamic Modes**: Implement intent-based persona switching (Recruiter vs. Friend mode).
+- **Visual & Interactive Responses**: Serve rich UI components (e.g., GitHub stats, heatmaps) instead of plain text.
+- **Hardware Integration**: Connect physical sensors (ESP32) for live status, room presence, and ambient interaction.
+- **Advanced Capabilities**: Voice interface, on-device inference, and agent scheduling.
