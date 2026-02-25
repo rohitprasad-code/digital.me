@@ -1,4 +1,10 @@
-export type BlockType = 'heading' | 'paragraph' | 'table' | 'code' | 'list' | 'image_ref';
+export type BlockType =
+  | "heading"
+  | "paragraph"
+  | "table"
+  | "code"
+  | "list"
+  | "image_ref";
 
 export interface ContentBlock {
   type: BlockType;
@@ -19,30 +25,30 @@ export class DocumentParser {
 
     while (i < lines.length) {
       const line = lines[i];
-      
+
       // Skip empty lines
-      if (line.trim() === '') {
+      if (line.trim() === "") {
         i++;
         continue;
       }
 
       // 1. Code Blocks
-      if (line.trim().startsWith('```')) {
-        let content = line + '\n';
+      if (line.trim().startsWith("```")) {
+        let content = line + "\n";
         const lang = line.trim().substring(3).trim();
         i++;
-        while (i < lines.length && !lines[i].trim().startsWith('```')) {
-          content += lines[i] + '\n';
+        while (i < lines.length && !lines[i].trim().startsWith("```")) {
+          content += lines[i] + "\n";
           i++;
         }
         if (i < lines.length) {
-          content += lines[i] + '\n';
+          content += lines[i] + "\n";
           i++; // Consume closing backticks
         }
         blocks.push({
-          type: 'code',
+          type: "code",
           content: content.trim(),
-          metadata: { language: lang || 'unknown' },
+          metadata: { language: lang || "unknown" },
         });
         continue;
       }
@@ -51,7 +57,7 @@ export class DocumentParser {
       const headingMatch = line.match(/^(#{1,6})\s+(.*)/);
       if (headingMatch) {
         blocks.push({
-          type: 'heading',
+          type: "heading",
           content: line.trim(),
           level: headingMatch[1].length,
         });
@@ -60,15 +66,15 @@ export class DocumentParser {
       }
 
       // 3. Tables (simple markdown tables)
-      if (line.trim().startsWith('|') && line.trim().endsWith('|')) {
-        let content = line + '\n';
+      if (line.trim().startsWith("|") && line.trim().endsWith("|")) {
+        let content = line + "\n";
         i++;
-        while (i < lines.length && lines[i].trim().startsWith('|')) {
-          content += lines[i] + '\n';
+        while (i < lines.length && lines[i].trim().startsWith("|")) {
+          content += lines[i] + "\n";
           i++;
         }
         blocks.push({
-          type: 'table',
+          type: "table",
           content: content.trim(),
         });
         continue;
@@ -77,38 +83,39 @@ export class DocumentParser {
       // 4. Lists
       // Matches bullet points (*, -, +) or numbered lists (1.)
       if (line.match(/^(\s*)([-*+]|\d+\.)\s/)) {
-        let content = line + '\n';
+        let content = line + "\n";
         i++;
         while (
           i < lines.length &&
-          (lines[i].match(/^(\s*)([-*+]|\d+\.)\s/) || (lines[i].trim() !== '' && Object.is(lines[i][0], ' ')))
+          (lines[i].match(/^(\s*)([-*+]|\d+\.)\s/) ||
+            (lines[i].trim() !== "" && Object.is(lines[i][0], " ")))
         ) {
-          content += lines[i] + '\n';
+          content += lines[i] + "\n";
           i++;
         }
         blocks.push({
-          type: 'list',
+          type: "list",
           content: content.trim(),
         });
         continue;
       }
 
       // 5. Paragraphs (Accumulate until blank line or start of new block)
-      let content = line + '\n';
+      let content = line + "\n";
       i++;
       while (
         i < lines.length &&
-        lines[i].trim() !== '' &&
-        !lines[i].trim().startsWith('```') &&
+        lines[i].trim() !== "" &&
+        !lines[i].trim().startsWith("```") &&
         !lines[i].match(/^(#{1,6})\s+/) &&
         !lines[i].match(/^(\s*)([-*+]|\d+\.)\s/) &&
-        !lines[i].trim().startsWith('|')
+        !lines[i].trim().startsWith("|")
       ) {
-        content += lines[i] + '\n';
+        content += lines[i] + "\n";
         i++;
       }
       blocks.push({
-        type: 'paragraph',
+        type: "paragraph",
         content: content.trim(),
       });
     }

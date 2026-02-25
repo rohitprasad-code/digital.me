@@ -1,11 +1,10 @@
 import fs from "fs/promises";
 import path from "path";
-import { logEvent } from "../../utils/logger";
+import { log } from "../../utils/logger";
 import { StravaClient } from "./client";
 import { VectorStore } from "../../memory/vector_store";
 
 export async function ingestStrava(vectorStore: VectorStore) {
-  console.log("Ingesting Strava data...");
   try {
     const strava = new StravaClient();
     const stravaData: any = {};
@@ -60,17 +59,12 @@ export async function ingestStrava(vectorStore: VectorStore) {
     );
     await fs.mkdir(path.dirname(stravaJsonPath), { recursive: true });
     await fs.writeFile(stravaJsonPath, JSON.stringify(stravaData, null, 2));
-    console.log(`Saved Strava data to ${stravaJsonPath}`);
 
-    console.log("Successfully ingested Strava data.");
-    await logEvent("ingest", "Successfully ingested Strava data");
+    log.success("Successfully ingested Strava data");
   } catch (error) {
-    console.warn(
-      "Skipping Strava ingestion:",
+    log.warn(
+      "Skipping Strava ingestion",
       error instanceof Error ? error.message : "Unknown error",
     );
-    await logEvent("ingest", "Skipping Strava ingestion", {
-      error: error instanceof Error ? error.message : "Unknown error",
-    });
   }
 }

@@ -1,5 +1,5 @@
-import { StructuredDocument } from './structure_analyzer';
-import { ContentBlock } from './document_parser';
+import { StructuredDocument } from "./structure_analyzer";
+import { ContentBlock } from "./document_parser";
 
 export interface ChunkingConfig {
   maxChunkTokens: number;
@@ -52,20 +52,26 @@ export class StructureAwareChunker {
     }
 
     for (const section of doc.sections) {
-      chunks.push(...this.processBlocks(section.children, section.heading, sourceFile));
+      chunks.push(
+        ...this.processBlocks(section.children, section.heading, sourceFile),
+      );
     }
 
     return chunks;
   }
 
-  private processBlocks(blocks: ContentBlock[], heading?: ContentBlock, sourceFile?: string): Chunk[] {
+  private processBlocks(
+    blocks: ContentBlock[],
+    heading?: ContentBlock,
+    sourceFile?: string,
+  ): Chunk[] {
     const chunks: Chunk[] = [];
-    let currentContent = heading ? heading.content + '\n\n' : '';
+    let currentContent = heading ? heading.content + "\n\n" : "";
     let currentTokens = this.estimateTokens(currentContent);
     let blockTypes = new Set<string>();
-    
+
     if (heading) {
-        blockTypes.add('heading');
+      blockTypes.add("heading");
     }
 
     const finalizeChunk = () => {
@@ -74,7 +80,9 @@ export class StructureAwareChunker {
           content: currentContent.trim(),
           index: this.currentChunkIndex++,
           metadata: {
-            sectionHeading: heading ? heading.content.replace(/^#+\s*/, '').trim() : undefined,
+            sectionHeading: heading
+              ? heading.content.replace(/^#+\s*/, "").trim()
+              : undefined,
             blockTypes: Array.from(blockTypes),
             sourceFile,
           },
@@ -86,39 +94,42 @@ export class StructureAwareChunker {
       const blockTokens = this.estimateTokens(block.content);
 
       // Rule 1: Table & Code Preserver
-      const isUnsplittable = 
-        (block.type === 'table' && this.config.preserveTables) ||
-        (block.type === 'code' && this.config.preserveCodeBlocks);
+      const isUnsplittable =
+        (block.type === "table" && this.config.preserveTables) ||
+        (block.type === "code" && this.config.preserveCodeBlocks);
 
       if (isUnsplittable) {
         // If current chunk + this block is too big, flush current chunk first
-        if (currentTokens + blockTokens > this.config.maxChunkTokens && currentTokens > (heading ? this.estimateTokens(heading.content) : 0)) {
+        if (
+          currentTokens + blockTokens > this.config.maxChunkTokens &&
+          currentTokens > (heading ? this.estimateTokens(heading.content) : 0)
+        ) {
           finalizeChunk();
-          currentContent = heading ? heading.content + '\n\n' : '';
+          currentContent = heading ? heading.content + "\n\n" : "";
           currentTokens = this.estimateTokens(currentContent);
           blockTypes = new Set<string>();
-          if (heading) blockTypes.add('heading');
+          if (heading) blockTypes.add("heading");
         }
 
         // Add the unsplittable block
-        currentContent += block.content + '\n\n';
+        currentContent += block.content + "\n\n";
         currentTokens += blockTokens;
         blockTypes.add(block.type);
 
         // If the block itself pushed us over max, flush immediately
         if (currentTokens >= this.config.maxChunkTokens) {
           finalizeChunk();
-          currentContent = heading ? heading.content + '\n\n' : '';
+          currentContent = heading ? heading.content + "\n\n" : "";
           currentTokens = this.estimateTokens(currentContent);
           blockTypes = new Set<string>();
-          if (heading) blockTypes.add('heading');
+          if (heading) blockTypes.add("heading");
         }
         continue;
       }
 
       // Rule 3: Natural Boundaries (Paragraphs)
       if (currentTokens + blockTokens <= this.config.maxChunkTokens) {
-        currentContent += block.content + '\n\n';
+        currentContent += block.content + "\n\n";
         currentTokens += blockTokens;
         blockTypes.add(block.type);
       } else {
@@ -126,39 +137,44 @@ export class StructureAwareChunker {
         const sentences = block.content.split(/(?<=[.?!])\s+/);
         for (const sentence of sentences) {
           const sentenceTokens = this.estimateTokens(sentence);
-          
-          if (currentTokens + sentenceTokens > this.config.maxChunkTokens && currentTokens > (heading ? this.estimateTokens(heading.content) : 0)) {
+
+          if (
+            currentTokens + sentenceTokens > this.config.maxChunkTokens &&
+            currentTokens > (heading ? this.estimateTokens(heading.content) : 0)
+          ) {
             finalizeChunk();
-            
+
             // Overlap logic
             const prevWords = chunks[chunks.length - 1].content.split(/\s+/);
-            const overlapWordCount = Math.ceil(this.config.overlapTokens * 0.75);
-            const overlapContent = prevWords.slice(-overlapWordCount).join(' ');
+            const overlapWordCount = Math.ceil(
+              this.config.overlapTokens * 0.75,
+            );
+            const overlapContent = prevWords.slice(-overlapWordCount).join(" ");
 
-            currentContent = heading ? heading.content + '\n\n' : '';
+            currentContent = heading ? heading.content + "\n\n" : "";
             if (overlapContent) {
-              currentContent += overlapContent + ' ';
+              currentContent += overlapContent + " ";
             }
-            
+
             currentTokens = this.estimateTokens(currentContent);
             blockTypes = new Set<string>();
-            if (heading) blockTypes.add('heading');
+            if (heading) blockTypes.add("heading");
           }
-          
-          currentContent += sentence + ' ';
+
+          currentContent += sentence + " ";
           currentTokens += sentenceTokens;
           blockTypes.add(block.type);
         }
-        currentContent += '\n\n';
+        currentContent += "\n\n";
       }
     }
 
     // Flush remaining
     if (currentTokens > (heading ? this.estimateTokens(heading.content) : 0)) {
-        // Only flush if we have more than just a heading
-        if (currentContent.trim() !== (heading ? heading.content.trim() : '')) {
-            finalizeChunk();
-        }
+      // Only flush if we have more than just a heading
+      if (currentContent.trim() !== (heading ? heading.content.trim() : "")) {
+        finalizeChunk();
+      }
     }
 
     return chunks;

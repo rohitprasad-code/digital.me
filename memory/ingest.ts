@@ -1,6 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
-import { logEvent } from "../utils/logger";
+import { log } from "../utils/logger";
 const { PDFParse } = require("pdf-parse");
 import { VectorStore } from "./vector_store/index";
 import { getLLMProvider } from "../model/llm/provider";
@@ -33,7 +33,6 @@ interface ResumeData {
 }
 
 async function parseResumeWithLLM(text: string): Promise<ResumeData | null> {
-  console.log("Parsing resume with LLM...");
   const prompt = `
   You are an expert resume parser for a JSON-based vector database.
   Extract the following structured data from the resume text below and return it as a VALID JSON object.
@@ -117,10 +116,12 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, JSON.stringify(data, null, 2));
 
-    console.log(`Successfully ingested ${filename}`);
-    await logEvent("ingest", `Successfully ingested ${filename} (Static JSON)`);
+    log.success("Successfully ingested " + filename);
   } catch (error) {
-    console.error(`Error ingesting static JSON ${filePath}:`, error);
+    log.error(
+      "Error ingesting static JSON " + filePath,
+      error instanceof Error ? error.message : "Unknown error",
+    );
   }
 }
 
@@ -135,8 +136,6 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
     const structuredData = await parseResumeWithLLM(text);
 
     if (structuredData) {
-      console.log(`Successfully parsed ${filename} into structured data.`);
-
       // Save structured data to JSON file
       const jsonName = filename.replace(/\.pdf$/i, ".json");
       const resumeJsonPath = path.resolve(
@@ -147,11 +146,6 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
       await fs.writeFile(
         resumeJsonPath,
         JSON.stringify(structuredData, null, 2),
-      );
-      console.log(`Saved structured data to ${resumeJsonPath}`);
-      await logEvent(
-        "ingest",
-        `Saved structured data to ${resumeJsonPath} (Static PDF)`,
       );
 
       // Ingest Experience
@@ -205,9 +199,13 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
           });
         }
       }
+
+      log.success("Successfully ingested " + filename);
     } else {
-      console.warn(
-        `LLM parsing failed for ${filename}, falling back to structure-aware chunking.`,
+      log.warn(
+        "LLM parsing failed for " +
+          filename +
+          ", falling back to structure-aware chunking.",
       );
       const chunks = processDocument(text, filename);
 
@@ -220,16 +218,15 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
           });
         }
       }
-      console.log(
-        `Ingested ${filename} via structure-aware fallback (${chunks.length} chunks)`,
-      );
-      await logEvent(
-        "ingest",
+      log.success(
         `Ingested ${filename} via structure-aware fallback (${chunks.length} chunks)`,
       );
     }
   } catch (error) {
-    console.error(`Error ingesting static PDF ${filePath}:`, error);
+    log.error(
+      `Error ingesting static PDF ${filePath}`,
+      error instanceof Error ? error.message : "Unknown error",
+    );
   }
 }
 
@@ -255,11 +252,7 @@ async function processGenericText(
         );
         await fs.mkdir(path.dirname(staticPath), { recursive: true });
         await fs.writeFile(staticPath, JSON.stringify(structuredData, null, 2));
-        console.log(
-          `Saved extracted structure for ${filename} to ${staticPath}`,
-        );
-        await logEvent(
-          "ingest",
+        log.success(
           `Saved extracted structure for ${filename} to ${staticPath}`,
         );
 
@@ -284,28 +277,26 @@ async function processGenericText(
       }
     }
 
-    console.log(
-      `Ingested ${filename} via structure-aware chunking (${chunks.length} chunks)`,
-    );
-    await logEvent(
-      "ingest",
+    log.success(
       `Ingested ${filename} via structure-aware chunking (${chunks.length} chunks)`,
     );
   } catch (error) {
-    console.error(`Error processing generic text ${filePath}:`, error);
+    log.error(
+      `Error processing generic text ${filePath}`,
+      error instanceof Error ? error.message : "Unknown error",
+    );
   }
 }
 
 async function ingest() {
+  log.info("Ingestion started");
   const vectorStore = new VectorStore();
 
-  console.log("Clearing existing vector store...");
-  await logEvent("ingest", "Clearing existing vector store...");
+  log.info("Clearing existing vector store...");
   await vectorStore.clear();
 
-  // 1. Process all static documents in `public/`
-  console.log("Processing static files in public/...");
-  await logEvent("ingest", "Processing static files in public/...");
+  await vectorStore.clear();
+
   const publicPath = path.resolve(process.cwd(), "public");
 
   try {
@@ -325,36 +316,37 @@ async function ingest() {
       ) {
         await processGenericText(filePath, role, vectorStore);
       } else {
-        console.log(`Skipping unknown or unsupported file format: ${filePath}`);
+        log.warn(`Skipping unknown or unsupported file format: ${filePath}`);
       }
     }
   } catch (err) {
-    console.warn(
+    log.warn(
       "Could not read public directory. Might not exist or is empty.",
+      err instanceof Error ? err.message : "Unknown error",
     );
   }
 
-  // 2. Process all dynamic integrations
-  console.log("Processing dynamic integrations...");
-  await logEvent("ingest", "Processing dynamic integrations...");
   for (const integrator of integrators) {
     try {
-      console.log(`Triggering integrator: ${integrator.name}`);
       await integrator.ingest(vectorStore);
     } catch (err) {
-      console.error(`Intgrator ${integrator.name} failed:`, err);
-      await logEvent("ingest", `Integrator ${integrator.name} failed`, {
+      log.error(`Integrator ${integrator.name} failed`, {
         error: err instanceof Error ? err.message : String(err),
       });
     }
   }
 
-  console.log("Ingestion complete!");
-  await logEvent("ingest", "Ingestion complete!");
+  log.info("Ingestion complete!");
 }
 
 export { ingest };
 
 if (require.main === module) {
-  ingest().catch(console.error);
+  ingest().catch(async (err) => {
+    log.error(
+      "Ingestion failed",
+      err instanceof Error ? err.message : "Unknown error",
+    );
+    process.exit(1);
+  });
 }

@@ -1,4 +1,4 @@
-import { ContentBlock } from './document_parser';
+import { ContentBlock } from "./document_parser";
 
 export interface Section {
   heading: ContentBlock;
@@ -17,7 +17,10 @@ export class StructureAnalyzer {
    * Enriches ContentBlocks with hierarchy and grouping information.
    * Creates parent-child relationships where headings own subsequent content blocks.
    */
-  static analyze(blocks: ContentBlock[], defaultTitle: string = 'Document'): StructuredDocument {
+  static analyze(
+    blocks: ContentBlock[],
+    defaultTitle: string = "Document",
+  ): StructuredDocument {
     const doc: StructuredDocument = {
       title: defaultTitle,
       preamble: [],
@@ -28,9 +31,9 @@ export class StructureAnalyzer {
     let titleSet = false;
 
     for (const block of blocks) {
-      if (block.type === 'heading') {
-        const headingText = block.content.replace(/^#+\s*/, '').trim();
-        
+      if (block.type === "heading") {
+        const headingText = block.content.replace(/^#+\s*/, "").trim();
+
         if (!titleSet && block.level === 1) {
           doc.title = headingText;
           titleSet = true;

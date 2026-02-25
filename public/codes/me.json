@@ -5,14 +5,8 @@
     "bio": "I am a passionate developer building my Digital Me. I love coding, running, and exploring new technologies.",
     "location": "India"
   },
-  "skills": [
-    "Python",
-    "AI/ML"
-  ],
-  "interests": [
-    "Running",
-    "Tech"
-  ],
+  "skills": ["Python", "AI/ML"],
+  "interests": ["Running", "Tech"],
   "goals": [
     "Build a Digital Me that can answer questions on my behalf",
     "Automate personal data aggregation",

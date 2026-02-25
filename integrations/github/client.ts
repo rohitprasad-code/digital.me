@@ -1,4 +1,4 @@
-import { Octokit } from '@octokit/rest';
+import { Octokit } from "@octokit/rest";
 
 export class GitHubClient {
   private octokit: Octokit;
@@ -9,7 +9,9 @@ export class GitHubClient {
     const username = process.env.GITHUB_USERNAME;
 
     if (!token || !username) {
-      throw new Error('GITHUB_TOKEN and GITHUB_USERNAME must be set in environment variables');
+      throw new Error(
+        "GITHUB_TOKEN and GITHUB_USERNAME must be set in environment variables",
+      );
     }
 
     this.octokit = new Octokit({ auth: token });
@@ -31,7 +33,7 @@ export class GitHubClient {
         html_url: data.html_url,
       };
     } catch (error) {
-      console.error('Error fetching GitHub profile:', error);
+      console.error("Error fetching GitHub profile:", error);
       return null;
     }
   }
@@ -40,8 +42,8 @@ export class GitHubClient {
     try {
       const { data } = await this.octokit.repos.listForUser({
         username: this.username,
-        sort: 'updated',
-        direction: 'desc',
+        sort: "updated",
+        direction: "desc",
         per_page: limit,
       });
 
@@ -54,7 +56,7 @@ export class GitHubClient {
         stars: repo.stargazers_count,
       }));
     } catch (error) {
-      console.error('Error fetching recent repos:', error);
+      console.error("Error fetching recent repos:", error);
       return [];
     }
   }
@@ -73,10 +75,8 @@ export class GitHubClient {
         payload: event.payload, // Valid payload type check might be complex, keeping as is for flexibility
       }));
     } catch (error) {
-      console.error('Error fetching recent activity:', error);
+      console.error("Error fetching recent activity:", error);
       return [];
     }
   }
 }
-
-
