@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { logEvent } from "../../utils/logger";
 import { GitHubClient } from "./client";
 import { VectorStore } from "../../memory/vector_store";
 
@@ -53,17 +54,21 @@ export async function ingestGitHub(vectorStore: VectorStore) {
     // Save GitHub data to JSON file
     const githubJsonPath = path.resolve(
       process.cwd(),
-      "memory/memory_type/dynamic/github.json"
+      "memory/memory_type/dynamic/github.json",
     );
     await fs.mkdir(path.dirname(githubJsonPath), { recursive: true });
     await fs.writeFile(githubJsonPath, JSON.stringify(githubData, null, 2));
     console.log(`Saved GitHub data to ${githubJsonPath}`);
 
     console.log("Successfully ingested GitHub data.");
+    await logEvent("ingest", "Successfully ingested GitHub data");
   } catch (error) {
     console.warn(
       "Skipping GitHub ingestion:",
-      error instanceof Error ? error.message : "Unknown error"
+      error instanceof Error ? error.message : "Unknown error",
     );
+    await logEvent("ingest", "Skipping GitHub ingestion", {
+      error: error instanceof Error ? error.message : "Unknown error",
+    });
   }
 }

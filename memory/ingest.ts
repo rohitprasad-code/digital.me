@@ -1,5 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
+import { logEvent } from "../utils/logger";
 const { PDFParse } = require("pdf-parse");
 import { VectorStore } from "./vector_store/index";
 import { getLLMProvider } from "../model/llm/provider";
@@ -117,6 +118,7 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
     await fs.writeFile(targetPath, JSON.stringify(data, null, 2));
 
     console.log(`Successfully ingested ${filename}`);
+    await logEvent("ingest", `Successfully ingested ${filename} (Static JSON)`);
   } catch (error) {
     console.error(`Error ingesting static JSON ${filePath}:`, error);
   }
@@ -147,6 +149,10 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
         JSON.stringify(structuredData, null, 2),
       );
       console.log(`Saved structured data to ${resumeJsonPath}`);
+      await logEvent(
+        "ingest",
+        `Saved structured data to ${resumeJsonPath} (Static PDF)`,
+      );
 
       // Ingest Experience
       if (structuredData.experience) {
@@ -217,6 +223,10 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
       console.log(
         `Ingested ${filename} via structure-aware fallback (${chunks.length} chunks)`,
       );
+      await logEvent(
+        "ingest",
+        `Ingested ${filename} via structure-aware fallback (${chunks.length} chunks)`,
+      );
     }
   } catch (error) {
     console.error(`Error ingesting static PDF ${filePath}:`, error);
@@ -248,6 +258,10 @@ async function processGenericText(
         console.log(
           `Saved extracted structure for ${filename} to ${staticPath}`,
         );
+        await logEvent(
+          "ingest",
+          `Saved extracted structure for ${filename} to ${staticPath}`,
+        );
 
         const metaContent = `Metadata for ${filename}:\nTitle: ${structuredData.title}\nSummary: ${structuredData.summary}\nTopics: ${(structuredData.topics || []).join(", ")}`;
         await vectorStore.addDocument(metaContent, {
@@ -273,6 +287,10 @@ async function processGenericText(
     console.log(
       `Ingested ${filename} via structure-aware chunking (${chunks.length} chunks)`,
     );
+    await logEvent(
+      "ingest",
+      `Ingested ${filename} via structure-aware chunking (${chunks.length} chunks)`,
+    );
   } catch (error) {
     console.error(`Error processing generic text ${filePath}:`, error);
   }
@@ -282,10 +300,12 @@ async function ingest() {
   const vectorStore = new VectorStore();
 
   console.log("Clearing existing vector store...");
+  await logEvent("ingest", "Clearing existing vector store...");
   await vectorStore.clear();
 
   // 1. Process all static documents in `public/`
   console.log("Processing static files in public/...");
+  await logEvent("ingest", "Processing static files in public/...");
   const publicPath = path.resolve(process.cwd(), "public");
 
   try {
@@ -316,16 +336,21 @@ async function ingest() {
 
   // 2. Process all dynamic integrations
   console.log("Processing dynamic integrations...");
+  await logEvent("ingest", "Processing dynamic integrations...");
   for (const integrator of integrators) {
     try {
       console.log(`Triggering integrator: ${integrator.name}`);
       await integrator.ingest(vectorStore);
     } catch (err) {
       console.error(`Intgrator ${integrator.name} failed:`, err);
+      await logEvent("ingest", `Integrator ${integrator.name} failed`, {
+        error: err instanceof Error ? err.message : String(err),
+      });
     }
   }
 
   console.log("Ingestion complete!");
+  await logEvent("ingest", "Ingestion complete!");
 }
 
 export { ingest };
