@@ -12,6 +12,7 @@
     "cli": "node scripts/dev-cli.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "@octokit/rest": "^22.0.1",
     "@types/pdf-parse": "^1.1.5",
     "@types/uuid": "^10.0.0",

@@ -1,19 +1,20 @@
-import { NextRequest } from 'next/server';
-import { ollama } from '@/model/llm/ollama/client';
-import { systemPrompt } from '@/model/prompts/core';
-import { VectorStore } from '@/memory/vector_store';
+import { NextRequest } from "next/server";
+import { getLLMProvider } from "@/model/llm/provider";
+import { systemPrompt } from "@/model/prompts/core";
+import { VectorStore } from "@/memory/vector_store";
 
 const vectorStore = new VectorStore();
 
 export async function GET() {
   try {
-    await ollama.list();
+    const provider = getLLMProvider();
+    await provider.healthCheck();
     return new Response("Digital-Me is running");
   } catch (error) {
     console.error("Health check failed:", error);
-    return new Response("Service Unavailable: AI Backend is offline", { 
+    return new Response("Service Unavailable: AI Backend is offline", {
       status: 503,
-      statusText: "Service Unavailable"
+      statusText: "Service Unavailable",
     });
   }
 }
@@ -24,39 +25,39 @@ export async function POST(req: NextRequest) {
 
     let contextString = "";
     if (messages.length > 0) {
-        const lastMessage = messages[messages.length - 1];
-        if (lastMessage.role === 'user') {
-            try {
-                await vectorStore.load(); 
-                const results = await vectorStore.search(lastMessage.content, 10);
-                
-                if (results.length > 0) {
-                    const retrievedContent = results.map(r => r.doc.content).join('\n---\n');
-                    contextString = `\n\nRelevant Context:\n${retrievedContent}`;
-                    console.log(`Retrieved ${results.length} relevant documents for context.`);
-                }
-            } catch (err) {
-                console.error("Failed to retrieve context:", err);
-            }
+      const lastMessage = messages[messages.length - 1];
+      if (lastMessage.role === "user") {
+        try {
+          await vectorStore.load();
+          const results = await vectorStore.search(lastMessage.content, 10);
+
+          if (results.length > 0) {
+            const retrievedContent = results
+              .map((r) => r.doc.content)
+              .join("\n---\n");
+            contextString = `\n\nRelevant Context:\n${retrievedContent}`;
+            console.log(
+              `Retrieved ${results.length} relevant documents for context.`,
+            );
+          }
+        } catch (err) {
+          console.error("Failed to retrieve context:", err);
         }
+      }
     }
 
     const allMessages = [
-      { role: 'system', content: systemPrompt + contextString },
+      { role: "system" as const, content: systemPrompt + contextString },
       ...messages,
     ];
 
-    const response = await ollama.chat({
-      model: 'llama3', // User needs to make sure this model exists or change it
-      messages: allMessages,
-      stream: true,
-    });
+    const provider = getLLMProvider();
 
-    // Create a ReadableStream from the generator
+    // Create a ReadableStream from the provider's streaming response
     const stream = new ReadableStream({
       async start(controller) {
-        for await (const part of response) {
-          controller.enqueue(part.message.content);
+        for await (const chunk of provider.chatStream(allMessages)) {
+          controller.enqueue(chunk);
         }
         controller.close();
       },
@@ -64,16 +65,18 @@ export async function POST(req: NextRequest) {
 
     return new Response(stream, {
       headers: {
-        'Content-Type': 'text/plain; charset=utf-8',
-        'Transfer-Encoding': 'chunked', 
+        "Content-Type": "text/plain; charset=utf-8",
+        "Transfer-Encoding": "chunked",
       },
     });
-
   } catch (error) {
-    console.error('Error in chat route:', error);
-    return new Response(JSON.stringify({ error: 'Failed to process chat request' }), {
-      status: 500,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    console.error("Error in chat route:", error);
+    return new Response(
+      JSON.stringify({ error: "Failed to process chat request" }),
+      {
+        status: 500,
+        headers: { "Content-Type": "application/json" },
+      },
+    );
   }
 }

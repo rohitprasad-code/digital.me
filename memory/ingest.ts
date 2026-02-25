@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 const { PDFParse } = require("pdf-parse");
 import { VectorStore } from "./vector_store/index";
-import { ollama } from "../model/llm/ollama/client";
+import { getLLMProvider } from "../model/llm/provider";
 import { integrators } from "../integrations";
 import { processDocument } from "./data_processing/index";
 import {
@@ -57,14 +57,12 @@ async function parseResumeWithLLM(text: string): Promise<ResumeData | null> {
   `;
 
   try {
-    const response = await ollama.chat({
-      model: "llama3",
-      messages: [{ role: "user", content: prompt }],
-      format: "json", // Force JSON mode if supported or just prompt
-      stream: false,
+    const provider = getLLMProvider();
+    const response = await provider.chat([{ role: "user", content: prompt }], {
+      format: "json",
     });
 
-    const content = response.message.content;
+    const content = response.content;
     const jsonStart = content.indexOf("{");
     const jsonEnd = content.lastIndexOf("}");
     if (jsonStart !== -1 && jsonEnd !== -1) {
@@ -111,7 +109,10 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
     }
 
     // Save to memory/static for representing state
-    const targetPath = path.resolve(process.cwd(), `memory/memory_type/static/${filename}`);
+    const targetPath = path.resolve(
+      process.cwd(),
+      `memory/memory_type/static/${filename}`,
+    );
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, JSON.stringify(data, null, 2));
 

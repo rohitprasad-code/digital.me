@@ -1,13 +1,18 @@
-import { ollama } from "../../model/llm/ollama/client";
+import { getLLMProvider } from "../../model/llm/provider";
 
 export class UnstructuredConverter {
   /**
-   * Converts highly unstructured text into a structured JSON representation 
-   * using an LLM. This is useful for unstructured notes, logs, or plain text 
+   * Converts highly unstructured text into a structured JSON representation
+   * using an LLM. This is useful for unstructured notes, logs, or plain text
    * that lacks semantic headers.
    */
-  static async extractStructuredData(text: string, filename: string): Promise<any> {
-    console.log(`Extracting structured entities for unstructured file: ${filename}`);
+  static async extractStructuredData(
+    text: string,
+    filename: string,
+  ): Promise<any> {
+    console.log(
+      `Extracting structured entities for unstructured file: ${filename}`,
+    );
     const prompt = `
     You are an expert data extractor for a JSON-based vector database.
     Extract the key entities, summaries, and intents from the following unstructured text, and return a VALID JSON object.
@@ -29,23 +34,21 @@ export class UnstructuredConverter {
     `;
 
     try {
-      const response = await ollama.chat({
-        // Depending on user's default model in the ecosystem, could be generic parameter
-        model: "llama3", 
-        messages: [{ role: "user", content: prompt }],
-        format: "json", // Instruct model to return JSON
-        stream: false,
-      });
+      const provider = getLLMProvider();
+      const response = await provider.chat(
+        [{ role: "user", content: prompt }],
+        { format: "json" },
+      );
 
-      let content = response.message.content;
+      let content = response.content;
       // Clean up markdown block if the model returned it despite being told not to
       const jsonStart = content.indexOf("{");
       const jsonEnd = content.lastIndexOf("}");
-      
+
       if (jsonStart !== -1 && jsonEnd !== -1) {
         content = content.substring(jsonStart, jsonEnd + 1);
       }
-      
+
       return JSON.parse(content);
     } catch (error) {
       console.error(`LLM Structure Extraction failed for ${filename}:`, error);

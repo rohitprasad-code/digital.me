@@ -1,9 +1,9 @@
-import ollama from 'ollama';
+import { getLLMProvider } from "@/model/llm/provider";
 
 export enum MemoryType {
-  DYNAMIC = 'DYNAMIC_MEMORY', // Strava, Health, etc.
-  STATIC = 'STATIC_MEMORY',   // Resume, Projects, etc.
-  CONVERSATIONAL = 'CONVERSATIONAL_MEMORY', // Chat history
+  DYNAMIC = "DYNAMIC_MEMORY", // Strava, Health, etc.
+  STATIC = "STATIC_MEMORY", // Resume, Projects, etc.
+  CONVERSATIONAL = "CONVERSATIONAL_MEMORY", // Chat history
 }
 
 export class MemoryRouter {
@@ -25,14 +25,44 @@ export class MemoryRouter {
     const lowerQuery = query.toLowerCase();
 
     // Conversational keywords
-    const conversationalKeywords = ['hi', 'hello', 'hey', 'how are you', 'good morning', 'good evening', 'thanks', 'thank you'];
-    if (conversationalKeywords.some(k => lowerQuery.startsWith(k) || lowerQuery === k)) {
+    const conversationalKeywords = [
+      "hi",
+      "hello",
+      "hey",
+      "how are you",
+      "good morning",
+      "good evening",
+      "thanks",
+      "thank you",
+    ];
+    if (
+      conversationalKeywords.some(
+        (k) => lowerQuery.startsWith(k) || lowerQuery === k,
+      )
+    ) {
       return MemoryType.CONVERSATIONAL;
     }
 
     // Dynamic memory keywords (Strava, Health, etc.)
-    const dynamicKeywords = ['run', 'running', 'ran', 'swim', 'swimming', 'swam', 'bike', 'biking', 'cycled', 'activity', 'workout', 'heart rate', 'pace', 'calories', 'strava', 'health'];
-    if (dynamicKeywords.some(k => lowerQuery.includes(k))) {
+    const dynamicKeywords = [
+      "run",
+      "running",
+      "ran",
+      "swim",
+      "swimming",
+      "swam",
+      "bike",
+      "biking",
+      "cycled",
+      "activity",
+      "workout",
+      "heart rate",
+      "pace",
+      "calories",
+      "strava",
+      "health",
+    ];
+    if (dynamicKeywords.some((k) => lowerQuery.includes(k))) {
       return MemoryType.DYNAMIC;
     }
 
@@ -53,20 +83,19 @@ export class MemoryRouter {
     `;
 
     try {
-      const response = await ollama.chat({
-        model: 'llama3.2', // Or another fast model
-        messages: [{ role: 'user', content: prompt }],
-      });
-      
-      const content = response.message.content.trim().toUpperCase();
-      if (content.includes('DYNAMIC_MEMORY')) return MemoryType.DYNAMIC;
-      if (content.includes('CONVERSATIONAL_MEMORY')) return MemoryType.CONVERSATIONAL;
-      if (content.includes('STATIC_MEMORY')) return MemoryType.STATIC;
-      
+      const provider = getLLMProvider();
+      const response = await provider.chat([{ role: "user", content: prompt }]);
+
+      const content = response.content.trim().toUpperCase();
+      if (content.includes("DYNAMIC_MEMORY")) return MemoryType.DYNAMIC;
+      if (content.includes("CONVERSATIONAL_MEMORY"))
+        return MemoryType.CONVERSATIONAL;
+      if (content.includes("STATIC_MEMORY")) return MemoryType.STATIC;
+
       // Fallback
       return MemoryType.STATIC;
     } catch (error) {
-      console.error('Router LLM failed, falling back to keywords', error);
+      console.error("Router LLM failed, falling back to keywords", error);
       return this.routeWithKeywords(query);
     }
   }
