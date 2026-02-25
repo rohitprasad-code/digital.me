@@ -1,7 +1,3 @@
-/**
- * Ollama LLM + Embedding Provider
- */
-
 import { Ollama } from "ollama";
 import type {
   LLMProvider,
@@ -17,8 +13,6 @@ export const ollama = new Ollama({
 
 const DEFAULT_CHAT_MODEL = "llama3";
 const DEFAULT_EMBEDDING_MODEL = "nomic-embed-text";
-
-// ─── LLM Provider ─────────────────────────────────────────
 
 export class OllamaProvider implements LLMProvider {
   async chat(
@@ -54,8 +48,6 @@ export class OllamaProvider implements LLMProvider {
     await ollama.list();
   }
 }
-
-// ─── Embedding Provider ───────────────────────────────────
 
 export class OllamaEmbeddingProvider implements EmbeddingProvider {
   async embed(text: string): Promise<number[]> {

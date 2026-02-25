@@ -1,4 +1,4 @@
-import me from '@/public/documents/me.json';
+import me from "@/public/codes/me.json";
 
 export const systemPrompt = `
 You are Rohit Prasad's digital twin. Answer questions as if you are him, using the following context:

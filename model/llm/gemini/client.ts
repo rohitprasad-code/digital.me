@@ -18,7 +18,7 @@ function getGenAI(): GoogleGenerativeAI {
 }
 
 const DEFAULT_MODEL = "gemini-2.0-flash";
-const DEFAULT_EMBEDDING_MODEL = "text-embedding-004";
+const DEFAULT_EMBEDDING_MODEL = "gemini-embedding-001";
 
 /**
  * Convert our unified ChatMessage[] into Gemini's format.
