@@ -59,4 +59,4 @@ memory/**/*.txt
 data/*.json
 
 # logs
-.logs/
+.logs/*
