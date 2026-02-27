@@ -60,7 +60,7 @@ GITHUB_USERNAME=your_github_username
 STRAVA_ACCESS_TOKEN=your_strava_token
 
 # Optional: Override API URL
-# DIGITAL_ME_API_URL=http://localhost:3000/api
+# DIGITAL_ME_API_URL=http://localhost:7000/api
 EOT
     echo -e "${GREEN}Created .env.local template.${NC}"
 else

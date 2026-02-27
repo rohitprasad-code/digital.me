@@ -1,7 +1,7 @@
 import * as readline from "readline";
 import chalk from "chalk";
 
-const DEFAULT_API_URL = "http://localhost:3000/api";
+const DEFAULT_API_URL = "http://localhost:7000/api";
 
 export async function startChat(apiUrl: string = DEFAULT_API_URL) {
   console.log(

@@ -98,14 +98,15 @@ GITHUB_USERNAME=your_github_username
 STRAVA_ACCESS_TOKEN=your_strava_token
 
 # Optional: Override API URL
-# DIGITAL_ME_API_URL=http://localhost:3000/api
+# e.g.:
+# DIGITAL_ME_API_URL=http://localhost:7000/api
 ```
 
 ### 3. Prepare Your Data
 
-| File                       | Purpose                                                   |
-| -------------------------- | --------------------------------------------------------- |
-| `memory/static/resume.pdf` | Your resume (parsed via LLM into structured sections)     |
+| File                       | Purpose                                               |
+| -------------------------- | ----------------------------------------------------- |
+| `memory/static/resume.pdf` | Your resume (parsed via LLM into structured sections) |
 
 ### 4. Run
 

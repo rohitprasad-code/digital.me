@@ -5,7 +5,7 @@ const net = require("net");
 const RETRY_MS = 5000;
 const TIMEOUT_MS = 30000;
 
-// Check if port 3000 is ready
+// Check if port 7000 is ready
 const waitForPort = (port) =>
   new Promise((resolve, reject) => {
     const start = Date.now();
@@ -55,7 +55,7 @@ const waitForPort = (port) =>
 
   // Wait for it to be ready
   try {
-    await waitForPort(3000);
+    await waitForPort(7000);
     console.log("Server Ready. Launching CLI...");
 
     // Start CLI

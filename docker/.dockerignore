@@ -1,0 +1,12 @@
+node_modules
+.next
+.git
+.env.local
+.vscode
+.idea
+.logs
+*.log
+coverage
+data/embedded_vectors.json
+memory/memory_type/dynamic/*.json
+memory/memory_type/static/*.json

@@ -1,0 +1,32 @@
+services:
+  app:
+    build: 
+      context: ../
+      dockerfile: docker/Dockerfile
+    container_name: digital-me-app
+    ports:
+      - "7000:7000"
+    environment:
+      - OLLAMA_HOST=http://ollama:11434
+      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
+      - STRAVA_ACCESS_TOKEN=${STRAVA_ACCESS_TOKEN:-}
+    volumes:
+      # Mount data directories from parent dir to persist vector DB and memory state
+      - ../data:/app/data
+      - ../memory/memory_type/static:/app/memory/memory_type/static
+      - ../memory/memory_type/dynamic:/app/memory/memory_type/dynamic
+    depends_on:
+      - ollama
+
+  ollama:
+    image: ollama/ollama
+    container_name: digital-me-ollama
+    ports:
+      - "11434:11434"
+    volumes:
+      - ollama_data:/root/.ollama
+    # Note: To use Llama 3, you need to pull it inside the container once:
+    # docker exec -it digital-me-ollama ollama pull llama3
+
+volumes:
+  ollama_data:

@@ -14,7 +14,8 @@ npm run cli chat
 
 | Option            | Description                                                                         |
 | ----------------- | ----------------------------------------------------------------------------------- |
-| `-u, --url <url>` | Override the API URL (default: `DIGITAL_ME_API_URL` or `http://localhost:3000/api`) |
+| `-i, --id <id>`   | Resume a specific chat ID                                                           |
+| `-u, --url <url>` | Override the API URL (default: `DIGITAL_ME_API_URL` or `http://localhost:7000/api`) |
 
 - Type your message and press **Enter** to send.
 - Type `exit` to quit.
