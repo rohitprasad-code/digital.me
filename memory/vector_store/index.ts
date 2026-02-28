@@ -3,6 +3,7 @@ import computeCosineSimilarity from "compute-cosine-similarity";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs/promises";
 import path from "path";
+import { VECTOR_DIR } from "@/utils/paths";
 
 export interface Document {
   id: string;
@@ -16,7 +17,7 @@ export class VectorStore {
   private readonly storageFile: string;
 
   constructor(storageFile: string = "embedded_vectors.json") {
-    this.storageFile = path.resolve(process.cwd(), "data", storageFile);
+    this.storageFile = path.join(VECTOR_DIR, storageFile);
   }
 
   async addDocument(

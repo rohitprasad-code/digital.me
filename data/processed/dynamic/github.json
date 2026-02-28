@@ -1,0 +1,175 @@
+{
+  "profile": {
+    "login": "rohitprasad-code",
+    "name": "Rohit Prasad",
+    "bio": "Product Engineer\r\n",
+    "public_repos": 21,
+    "followers": 2,
+    "following": 2,
+    "html_url": "https://github.com/rohitprasad-code"
+  },
+  "repos": [
+    {
+      "name": "digital.me",
+      "description": "A AI agent mirroring my life and work by syncing Strava, LinkedIn, and personal data into a conversational twin.",
+      "language": "TypeScript",
+      "html_url": "https://github.com/rohitprasad-code/digital.me",
+      "updated_at": "2026-02-26T08:47:01Z",
+      "stars": 0
+    },
+    {
+      "name": "llmware",
+      "description": "Unified framework for building enterprise RAG pipelines with small, specialized models",
+      "language": "Python",
+      "html_url": "https://github.com/rohitprasad-code/llmware",
+      "updated_at": "2026-02-23T10:47:54Z",
+      "stars": 0
+    },
+    {
+      "name": "julep",
+      "description": "API for building multi-step agent workflows. (An orchestrator for AI agents and workflows.)",
+      "language": "Jupyter Notebook",
+      "html_url": "https://github.com/rohitprasad-code/julep",
+      "updated_at": "2026-02-23T10:46:44Z",
+      "stars": 0
+    },
+    {
+      "name": "aider",
+      "description": "aider is AI pair programming in your terminal",
+      "language": "Python",
+      "html_url": "https://github.com/rohitprasad-code/aider",
+      "updated_at": "2026-02-23T10:14:59Z",
+      "stars": 0
+    },
+    {
+      "name": "lucide",
+      "description": "Beautiful & consistent icon toolkit made by the community. Open-source project and a fork of Feather Icons.",
+      "language": null,
+      "html_url": "https://github.com/rohitprasad-code/lucide",
+      "updated_at": "2026-02-23T09:58:33Z",
+      "stars": 0
+    }
+  ],
+  "activities": [
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-26T08:46:58Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31117445049,
+        "ref": "refs/heads/main",
+        "head": "e5e94c624caa7a15e6488c6ec893623411c96693",
+        "before": "7092ed12c3cc0b080f1cfd39b0a3d220ed7affda"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-25T22:06:07Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31102743018,
+        "ref": "refs/heads/main",
+        "head": "7092ed12c3cc0b080f1cfd39b0a3d220ed7affda",
+        "before": "4f16ed5dfaf0c9ef5140ae2ec564af56a545c5ab"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-25T19:43:19Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31098622709,
+        "ref": "refs/heads/main",
+        "head": "4f16ed5dfaf0c9ef5140ae2ec564af56a545c5ab",
+        "before": "57ae917db1160c8dd1ecab8f6ddd73496f7dbd28"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-25T17:53:11Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31095163961,
+        "ref": "refs/heads/main",
+        "head": "57ae917db1160c8dd1ecab8f6ddd73496f7dbd28",
+        "before": "4707618788801a004aae5b03a5667bc32db4f297"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-25T17:36:32Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31094637384,
+        "ref": "refs/heads/main",
+        "head": "4707618788801a004aae5b03a5667bc32db4f297",
+        "before": "bb6d1635d39247b6625d59330722449f1d7c82f0"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-24T17:17:42Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31053661068,
+        "ref": "refs/heads/main",
+        "head": "bb6d1635d39247b6625d59330722449f1d7c82f0",
+        "before": "45de0e1d7bd2df1adfc5994e4801449891091a29"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-24T17:09:40Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31053394019,
+        "ref": "refs/heads/main",
+        "head": "45de0e1d7bd2df1adfc5994e4801449891091a29",
+        "before": "0f4e54b4716afeacdb753cce050fb063eca71b93"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/digital.me",
+      "created_at": "2026-02-24T06:03:31Z",
+      "payload": {
+        "repository_id": 1149195722,
+        "push_id": 31032397380,
+        "ref": "refs/heads/main",
+        "head": "0f4e54b4716afeacdb753cce050fb063eca71b93",
+        "before": "96958bfc599bb24bf032ec3509f0603ae45a7994"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/llmware",
+      "created_at": "2026-02-23T10:46:33Z",
+      "payload": {
+        "repository_id": 872415018,
+        "push_id": 31001736351,
+        "ref": "refs/heads/main",
+        "head": "dfa01f1baa4475b28e3f5439d4a21773a36e6dbc",
+        "before": "d2fefda99c537581ee0677dccb193120f04202b0"
+      }
+    },
+    {
+      "type": "PushEvent",
+      "repo": "rohitprasad-code/julep",
+      "created_at": "2026-02-23T10:46:24Z",
+      "payload": {
+        "repository_id": 868985426,
+        "push_id": 31001731725,
+        "ref": "refs/heads/dev",
+        "head": "533fcf6692817fbfab4cdb8bbe6c186d749093bc",
+        "before": "637d50b953f9099d6f5ec5eed0ffcc3ff5f237d7"
+      }
+    }
+  ]
+}

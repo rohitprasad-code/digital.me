@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { log } from "../../utils/logger";
+import { DYNAMIC_DIR } from "../../utils/paths";
 import { StravaClient } from "./client";
 import { VectorStore } from "../../memory/vector_store";
 
@@ -53,10 +54,7 @@ export async function ingestStrava(vectorStore: VectorStore) {
     }
 
     // Save Strava data to JSON file
-    const stravaJsonPath = path.resolve(
-      process.cwd(),
-      "memory/memory_type/dynamic/strava.json",
-    );
+    const stravaJsonPath = path.join(DYNAMIC_DIR, "strava.json");
     await fs.mkdir(path.dirname(stravaJsonPath), { recursive: true });
     await fs.writeFile(stravaJsonPath, JSON.stringify(stravaData, null, 2));
 

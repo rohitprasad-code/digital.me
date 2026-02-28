@@ -3,15 +3,13 @@ import path from "path";
 import { WEEKLY_REPORT_PROMPT } from "../../model/prompts/weekly_report";
 import { getLLMProvider } from "../../model/llm/provider";
 import { log } from "../../utils/logger";
+import { DYNAMIC_DIR, REPORTS_DIR } from "../../utils/paths";
 
 export async function generateWeeklyReport(): Promise<string> {
   log.info("Generating weekly report...");
 
   // 1. Collect Data Inline from Local Memory Storage
-  const dynamicMemoryDir = path.resolve(
-    process.cwd(),
-    "memory/memory_type/dynamic",
-  );
+  const dynamicMemoryDir = DYNAMIC_DIR;
   let githubData = null;
   let stravaData = null;
 
@@ -82,7 +80,7 @@ export async function generateWeeklyReport(): Promise<string> {
 
   // 3. Save Report
   const today = new Date().toISOString().split("T")[0]; // YYYY-MM-DD
-  const reportsDir = path.join(process.cwd(), "data", "reports");
+  const reportsDir = REPORTS_DIR;
 
   if (!fs.existsSync(reportsDir)) {
     fs.mkdirSync(reportsDir, { recursive: true });

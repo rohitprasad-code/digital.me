@@ -1,0 +1,92 @@
+{
+  "education": [
+    {
+      "institution": "Kalinga Institute of Industrial Technology",
+      "degree": "B.Tech, Computer science and engineering",
+      "year": "2020 - 2024"
+    }
+  ],
+  "experience": [
+    {
+      "company": "Tata Consultancy Services Limited (TCS)",
+      "role": "Product Engineer",
+      "duration": "Nov 2024 - Present",
+      "details": [
+        "Developed a proactive monitoring framework that reduced unplanned downtime by 30% during traffic spikes and improved platform reliability enhancing user experience.",
+        "Designed and implemented the configuration service that fetches metadata from a global database into the monitoring application, enabling monitoring of integrated applications.",
+        "Built the Silent Period Module, enabling configurable time-based alert suppression (daily, weekly, monthly), minimizing alert fatigue by 40%. Also configured email-based alert notifications using iON’s internal mailing system to notify stakeholders based on severity levels (info, warning, critical) enabling timely communication to product owners",
+        "Integrated scheduler-based pulling architecture, fetching transactional data from integrated applications hourly and processing it for trigger threshold checks resulting in early anomaly detection",
+        "Initiated future-ready auto-remediation support by enabling alert-triggered execution of pre-configured scripts for infrastructure scaling and recovery reducing manual intervention during high-load incidents."
+      ]
+    },
+    {
+      "company": "HighRadius Technologies",
+      "role": "Analytics and Machine Learning Intern",
+      "duration": "Aug 2023 - Jan 2024",
+      "details": [
+        "Implemented a dynamic search feature in Dot-One, resulting in a 30% increase in user engagement and an improvement in accessibility, enhancing the overall user experience.",
+        "Introduced a chatbot system to address client queries, leading to improved client interactions and issue resolution.",
+        "Integrated an AI model for predicting invoice order amounts, implementing regression techniques and leveraging a comprehensive dataset for accurate predictions."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Covid19 Detection from Xray image",
+      "technologies": [
+        "Python",
+        "TensorFlow"
+      ],
+      "description": "Developed a COVID-19 detection model using deep learning and CNNs on X-ray images for early diagnosis, supporting healthcare professionals in pandemic management."
+    },
+    {
+      "name": "AI-Enabled FinTech B2B Invoice Management Application",
+      "technologies": [
+        "ReactJS",
+        "SQL",
+        "Java",
+        "Jdbc"
+      ],
+      "description": "Developed an AI-powered FinTech B2B invoice app, streamlining CRUD operations. Enhanced efficiency and transparency by automating invoice handling, reducing manual effort for businesses."
+    }
+  ],
+  "skills": [
+    {
+      "category": "Languages/Frameworks/Tools",
+      "items": [
+        "C",
+        "C++",
+        "Python",
+        "Java",
+        "SQL",
+        "JavaScript",
+        "HTML",
+        "CSS",
+        "Flask",
+        "Bootstrap",
+        "Next.js"
+      ]
+    },
+    {
+      "category": "Skills",
+      "items": [
+        "Object Oriented Programming",
+        "Machine Learning",
+        "Data Structure and Algorithms",
+        "DataBase Management",
+        "Software Development"
+      ]
+    },
+    {
+      "category": "Libraries",
+      "items": [
+        "Numpy",
+        "Matplotlib",
+        "TensorFlow",
+        "Scikit-learn",
+        "Pandas",
+        "Open-CV"
+      ]
+    }
+  ]
+}

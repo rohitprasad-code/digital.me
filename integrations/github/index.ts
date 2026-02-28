@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { log } from "../../utils/logger";
+import { DYNAMIC_DIR } from "../../utils/paths";
 import { GitHubClient } from "./client";
 import { VectorStore } from "../../memory/vector_store";
 
@@ -51,10 +52,7 @@ export async function ingestGitHub(vectorStore: VectorStore) {
     }
 
     // Save GitHub data to JSON file
-    const githubJsonPath = path.resolve(
-      process.cwd(),
-      "memory/memory_type/dynamic/github.json",
-    );
+    const githubJsonPath = path.join(DYNAMIC_DIR, "github.json");
     await fs.mkdir(path.dirname(githubJsonPath), { recursive: true });
     await fs.writeFile(githubJsonPath, JSON.stringify(githubData, null, 2));
 

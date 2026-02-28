@@ -1,6 +1,7 @@
 import fs from "fs/promises";
 import path from "path";
 import { log } from "../utils/logger";
+import { STATIC_DIR } from "../utils/paths";
 const { PDFParse } = require("pdf-parse");
 import { VectorStore } from "./vector_store/index";
 import { getLLMProvider } from "../model/llm/provider";
@@ -108,11 +109,8 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
       });
     }
 
-    // Save to memory/static for representing state
-    const targetPath = path.resolve(
-      process.cwd(),
-      `memory/memory_type/static/${filename}`,
-    );
+    // Save to processed/static for representing state
+    const targetPath = path.join(STATIC_DIR, filename);
     await fs.mkdir(path.dirname(targetPath), { recursive: true });
     await fs.writeFile(targetPath, JSON.stringify(data, null, 2));
 
@@ -138,10 +136,7 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
     if (structuredData) {
       // Save structured data to JSON file
       const jsonName = filename.replace(/\.pdf$/i, ".json");
-      const resumeJsonPath = path.resolve(
-        process.cwd(),
-        `memory/memory_type/static/${jsonName}`,
-      );
+      const resumeJsonPath = path.join(STATIC_DIR, jsonName);
       await fs.mkdir(path.dirname(resumeJsonPath), { recursive: true });
       await fs.writeFile(
         resumeJsonPath,
@@ -246,10 +241,7 @@ async function processGenericText(
       );
       if (structuredData) {
         const jsonName = filename + ".json";
-        const staticPath = path.resolve(
-          process.cwd(),
-          `memory/memory_type/static/${jsonName}`,
-        );
+        const staticPath = path.join(STATIC_DIR, jsonName);
         await fs.mkdir(path.dirname(staticPath), { recursive: true });
         await fs.writeFile(staticPath, JSON.stringify(structuredData, null, 2));
         log.success(
