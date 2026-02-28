@@ -1,7 +1,7 @@
 {
   "education": [
     {
-      "institution": "Kalinga Institute of Industrial Technology",
+      "institution": "Kalinga Institute of Industrial Technology, Bhubaneswar, OD",
       "degree": "B.Tech, Computer science and engineering",
       "year": "2020 - 2024"
     }
@@ -10,24 +10,7 @@
     {
       "company": "Tata Consultancy Services Limited (TCS)",
       "role": "Product Engineer",
-      "duration": "Nov 2024 - Present",
-      "details": [
-        "Developed a proactive monitoring framework that reduced unplanned downtime by 30% during traffic spikes and improved platform reliability enhancing user experience.",
-        "Designed and implemented the configuration service that fetches metadata from a global database into the monitoring application, enabling monitoring of integrated applications.",
-        "Built the Silent Period Module, enabling configurable time-based alert suppression (daily, weekly, monthly), minimizing alert fatigue by 40%. Also configured email-based alert notifications using iON’s internal mailing system to notify stakeholders based on severity levels (info, warning, critical) enabling timely communication to product owners",
-        "Integrated scheduler-based pulling architecture, fetching transactional data from integrated applications hourly and processing it for trigger threshold checks resulting in early anomaly detection",
-        "Initiated future-ready auto-remediation support by enabling alert-triggered execution of pre-configured scripts for infrastructure scaling and recovery reducing manual intervention during high-load incidents."
-      ]
-    },
-    {
-      "company": "HighRadius Technologies",
-      "role": "Analytics and Machine Learning Intern",
-      "duration": "Aug 2023 - Jan 2024",
-      "details": [
-        "Implemented a dynamic search feature in Dot-One, resulting in a 30% increase in user engagement and an improvement in accessibility, enhancing the overall user experience.",
-        "Introduced a chatbot system to address client queries, leading to improved client interactions and issue resolution.",
-        "Integrated an AI model for predicting invoice order amounts, implementing regression techniques and leveraging a comprehensive dataset for accurate predictions."
-      ]
+      "duration": "Nov 2024 - Present"
     }
   ],
   "projects": [
@@ -65,27 +48,6 @@
         "Flask",
         "Bootstrap",
         "Next.js"
-      ]
-    },
-    {
-      "category": "Skills",
-      "items": [
-        "Object Oriented Programming",
-        "Machine Learning",
-        "Data Structure and Algorithms",
-        "DataBase Management",
-        "Software Development"
-      ]
-    },
-    {
-      "category": "Libraries",
-      "items": [
-        "Numpy",
-        "Matplotlib",
-        "TensorFlow",
-        "Scikit-learn",
-        "Pandas",
-        "Open-CV"
       ]
     }
   ]
