@@ -1,6 +1,10 @@
 import { NextRequest } from "next/server";
 import { getLLMProvider } from "@/model/llm/provider";
-import { getSystemPrompt, ContextMode } from "@/model/prompts/core";
+import {
+  getSystemPrompt,
+  ContextMode,
+  isValidMode,
+} from "@/model/prompts/core";
 import { VectorStore } from "@/memory/vector_store";
 import { MemoryRouter } from "@/memory/router";
 
@@ -24,6 +28,16 @@ export async function GET() {
 export async function POST(req: NextRequest) {
   try {
     const { messages, mode } = await req.json();
+
+    // Validate mode if provided
+    if (mode && !isValidMode(mode)) {
+      return new Response(
+        JSON.stringify({
+          error: `Invalid mode: "${mode}". Must be one of: recruiter, social, default`,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
     let contextString = "";
     let detectedMode: ContextMode = mode || "default";

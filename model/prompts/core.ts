@@ -2,6 +2,16 @@ import me from "@/public/codes/me.json";
 
 export type ContextMode = "recruiter" | "social" | "default";
 
+const VALID_MODES: ReadonlySet<string> = new Set<ContextMode>([
+  "recruiter",
+  "social",
+  "default",
+]);
+
+export function isValidMode(value: unknown): value is ContextMode {
+  return typeof value === "string" && VALID_MODES.has(value);
+}
+
 // 'default'   — balanced, general-purpose prompt
 // 'recruiter' — professional tone, resume-driven
 // 'social'    — casual tone, personality-forward
@@ -53,5 +63,3 @@ export function getSystemPrompt(mode: ContextMode = "default"): string {
       return defaultPrompt;
   }
 }
-
-export const systemPrompt = getSystemPrompt("default");
