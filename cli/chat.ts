@@ -1,14 +1,18 @@
 import * as readline from "readline";
 import chalk from "chalk";
+import { ContextMode } from "../model/prompts/core";
 
-const DEFAULT_API_URL = "http://localhost:7000/api";
+const DEFAULT_API_URL = "http://localhost:7001/api";
 
-export async function startChat(apiUrl: string = DEFAULT_API_URL) {
+export async function startChat(
+  apiUrl: string = DEFAULT_API_URL,
+  mode?: ContextMode,
+) {
   console.log(
     chalk.blue("Starting chat with Digital Me... (Type 'exit' to quit)"),
   );
   console.log(
-    chalk.yellow("Ensure the Next.js server is running at " + apiUrl),
+    chalk.yellow(`Mode: ${mode || "auto-detect"} | Server: ${apiUrl}`),
   );
 
   const rl = readline.createInterface({
@@ -45,7 +49,7 @@ export async function startChat(apiUrl: string = DEFAULT_API_URL) {
         headers: {
           "Content-Type": "application/json",
         },
-        body: JSON.stringify({ messages }),
+        body: JSON.stringify({ messages, ...(mode && { mode }) }),
       });
 
       if (!response.ok) {

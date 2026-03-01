@@ -1,9 +1,15 @@
 import { NextRequest } from "next/server";
 import { getLLMProvider } from "@/model/llm/provider";
-import { systemPrompt } from "@/model/prompts/core";
+import {
+  getSystemPrompt,
+  ContextMode,
+  isValidMode,
+} from "@/model/prompts/core";
 import { VectorStore } from "@/memory/vector_store";
+import { MemoryRouter } from "@/memory/router";
 
 const vectorStore = new VectorStore();
+const router = new MemoryRouter();
 
 export async function GET() {
   try {
@@ -21,12 +27,29 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages } = await req.json();
+    const { messages, mode } = await req.json();
+
+    // Validate mode if provided
+    if (mode && !isValidMode(mode)) {
+      return new Response(
+        JSON.stringify({
+          error: `Invalid mode: "${mode}". Must be one of: recruiter, social, default`,
+        }),
+        { status: 400, headers: { "Content-Type": "application/json" } },
+      );
+    }
 
     let contextString = "";
+    let detectedMode: ContextMode = mode || "default";
+
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === "user") {
+        // Auto-detect intent if no explicit mode was provided
+        if (!mode) {
+          detectedMode = await router.detectIntent(lastMessage.content);
+        }
+
         try {
           await vectorStore.load();
           const results = await vectorStore.search(lastMessage.content, 10);
@@ -46,8 +69,13 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    console.log(`Context mode: ${detectedMode}`);
+
     const allMessages = [
-      { role: "system" as const, content: systemPrompt + contextString },
+      {
+        role: "system" as const,
+        content: getSystemPrompt(detectedMode) + contextString,
+      },
       ...messages,
     ];
 

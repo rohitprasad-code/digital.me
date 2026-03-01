@@ -19,9 +19,13 @@ program
   .command("chat")
   .description("Start a chat session with Digital Me")
   .option("-u, --url <url>", "API URL to connect to")
+  .option(
+    "-m, --mode <mode>",
+    "Context mode: recruiter, social, or default (auto-detect if omitted)",
+  )
   .action((options) => {
     const apiUrl = options.url || process.env.DIGITAL_ME_API_URL;
-    startChat(apiUrl);
+    startChat(apiUrl, options.mode);
   });
 
 program
