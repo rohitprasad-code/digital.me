@@ -17,8 +17,8 @@ export class EmbeddingPipeline {
   /**
    * Generates a unique hash for a document's content and metadata
    */
-  private generateHash(content: string, metadata: Record<string, any>): string {
-    const dataString = content + JSON.stringify(metadata);
+  private generateHash(input: string, metadata: Record<string, any>): string {
+    const dataString = input + JSON.stringify(metadata);
     return crypto.createHash("sha256").update(dataString).digest("hex");
   }
 
@@ -30,8 +30,10 @@ export class EmbeddingPipeline {
   async syncDocument(
     content: string,
     metadata: Record<string, any> = {},
+    rawSource?: string,
   ): Promise<Document | null> {
-    const contentHash = this.generateHash(content, metadata);
+    const inputForHashing = rawSource || content;
+    const contentHash = this.generateHash(inputForHashing, metadata);
 
     // We attach the provider and hash to the metadata for tracking
     const enrichedMetadata = {

@@ -89,28 +89,44 @@ async function processStaticJson(
 
     // We can assume format of me.json style or just add whole JSON string
     if (data.profile) {
-      await pipeline.syncDocument(`Profile: ${JSON.stringify(data.profile)}`, {
-        source: filename,
-        type: "profile",
-      });
+      await pipeline.syncDocument(
+        `Profile: ${JSON.stringify(data.profile)}`,
+        {
+          source: filename,
+          type: "profile",
+        },
+        content,
+      );
     }
     if (data.skills) {
-      await pipeline.syncDocument(`Skills: ${data.skills.join(", ")}`, {
-        source: filename,
-        type: "skills",
-      });
+      await pipeline.syncDocument(
+        `Skills: ${data.skills.join(", ")}`,
+        {
+          source: filename,
+          type: "skills",
+        },
+        content,
+      );
     }
     if (data.interests) {
-      await pipeline.syncDocument(`Interests: ${data.interests.join(", ")}`, {
-        source: filename,
-        type: "interests",
-      });
+      await pipeline.syncDocument(
+        `Interests: ${data.interests.join(", ")}`,
+        {
+          source: filename,
+          type: "interests",
+        },
+        content,
+      );
     }
     if (data.goals) {
-      await pipeline.syncDocument(`Goals: ${data.goals.join(", ")}`, {
-        source: filename,
-        type: "goals",
-      });
+      await pipeline.syncDocument(
+        `Goals: ${data.goals.join(", ")}`,
+        {
+          source: filename,
+          type: "goals",
+        },
+        content,
+      );
     }
 
     // Save to processed/static for representing state
@@ -151,17 +167,25 @@ async function processStaticPdf(filePath: string, pipeline: EmbeddingPipeline) {
       if (structuredData.experience) {
         for (const exp of structuredData.experience) {
           const content = `Experience at ${exp.company} as ${exp.role} (${exp.duration}):\n${exp.details.join("\n")}`;
-          await pipeline.syncDocument(content, {
-            source: filename,
-            type: "experience",
-            company: exp.company,
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "experience",
+              company: exp.company,
+            },
+            text,
+          );
           const summary = `Work History: Employed at ${exp.company} as ${exp.role} since ${exp.duration.split("-")[0].trim()}.`;
-          await pipeline.syncDocument(summary, {
-            source: filename,
-            type: "experience_summary",
-            company: exp.company,
-          });
+          await pipeline.syncDocument(
+            summary,
+            {
+              source: filename,
+              type: "experience_summary",
+              company: exp.company,
+            },
+            text,
+          );
         }
       }
 
@@ -169,11 +193,15 @@ async function processStaticPdf(filePath: string, pipeline: EmbeddingPipeline) {
       if (structuredData.projects) {
         for (const proj of structuredData.projects) {
           const content = `Project: ${proj.name}\nTech Stack: ${proj.technologies.join(", ")}\nDescription: ${proj.description}`;
-          await pipeline.syncDocument(content, {
-            source: filename,
-            type: "project",
-            name: proj.name,
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "project",
+              name: proj.name,
+            },
+            text,
+          );
         }
       }
 
@@ -181,10 +209,14 @@ async function processStaticPdf(filePath: string, pipeline: EmbeddingPipeline) {
       if (structuredData.education) {
         for (const edu of structuredData.education) {
           const content = `Education: ${JSON.stringify(edu)}`;
-          await pipeline.syncDocument(content, {
-            source: filename,
-            type: "education",
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "education",
+            },
+            text,
+          );
         }
       }
 
@@ -192,10 +224,14 @@ async function processStaticPdf(filePath: string, pipeline: EmbeddingPipeline) {
       if (structuredData.skills) {
         for (const skillCat of structuredData.skills) {
           const content = `Resume Skills (${skillCat.category}): ${skillCat.items.join(", ")}`;
-          await pipeline.syncDocument(content, {
-            source: filename,
-            type: "skills",
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "skills",
+            },
+            text,
+          );
         }
       }
 
@@ -253,10 +289,14 @@ async function processGenericText(
         );
 
         const metaContent = `Metadata for ${filename}:\nTitle: ${structuredData.title}\nSummary: ${structuredData.summary}\nTopics: ${(structuredData.topics || []).join(", ")}`;
-        await pipeline.syncDocument(metaContent, {
-          source: filename,
-          type: "metadata",
-        });
+        await pipeline.syncDocument(
+          metaContent,
+          {
+            source: filename,
+            type: "metadata",
+          },
+          content,
+        );
       }
     }
 
