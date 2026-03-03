@@ -27,6 +27,7 @@ export type FileRole =
   | "unstructured"
   | "code"
   | "pdf"
+  | "html"
   | "unknown";
 
 export function determineFileRole(filePath: string): FileRole {
@@ -34,7 +35,8 @@ export function determineFileRole(filePath: string): FileRole {
 
   if ([".pdf"].includes(ext)) return "pdf";
   if ([".json", ".csv"].includes(ext)) return "structured";
-  if ([".ts", ".html"].includes(ext)) return "code";
+  if ([".html"].includes(ext)) return "html";
+  if ([".ts"].includes(ext)) return "code";
   if ([".md", ".txt"].includes(ext)) return "unstructured";
 
   return "unknown";
