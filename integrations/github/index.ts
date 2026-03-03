@@ -3,9 +3,9 @@ import path from "path";
 import { log } from "../../utils/logger";
 import { DYNAMIC_DIR } from "../../utils/paths";
 import { GitHubClient } from "./client";
-import { VectorStore } from "../../memory/vector_store";
+import { EmbeddingPipeline } from "../../jobs/embedding_pipeline";
 
-export async function ingestGitHub(vectorStore: VectorStore) {
+export async function ingestGitHub(pipeline: EmbeddingPipeline) {
   try {
     const github = new GitHubClient();
     const githubData: any = {};
@@ -15,7 +15,7 @@ export async function ingestGitHub(vectorStore: VectorStore) {
     if (profile) {
       githubData.profile = profile;
       const content = `GitHub Profile: ${profile.name} (@${profile.login})\nBio: ${profile.bio}\nStats: ${profile.public_repos} repos, ${profile.followers} followers\nURL: ${profile.html_url}`;
-      await vectorStore.addDocument(content, {
+      await pipeline.syncDocument(content, {
         source: "github",
         type: "github_profile",
       });
@@ -27,7 +27,7 @@ export async function ingestGitHub(vectorStore: VectorStore) {
       githubData.repos = repos;
       for (const repo of repos) {
         const content = `GitHub Repository: ${repo.name}\nDescription: ${repo.description}\nLanguage: ${repo.language}\nStars: ${repo.stars}\nUpdated: ${repo.updated_at}\nURL: ${repo.html_url}`;
-        await vectorStore.addDocument(content, {
+        await pipeline.syncDocument(content, {
           source: "github",
           type: "github_repo",
           name: repo.name,
@@ -44,7 +44,7 @@ export async function ingestGitHub(vectorStore: VectorStore) {
           .map((a) => `- ${a.type} on ${a.repo} at ${a.created_at}`)
           .join("\n");
         const content = `Recent GitHub Activity:\n${activitySummary}`;
-        await vectorStore.addDocument(content, {
+        await pipeline.syncDocument(content, {
           source: "github",
           type: "github_activity",
         });

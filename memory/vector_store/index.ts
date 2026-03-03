@@ -20,6 +20,31 @@ export class VectorStore {
     this.storageFile = path.join(VECTOR_DIR, storageFile);
   }
 
+  getAllDocuments(): Document[] {
+    return this.documents;
+  }
+
+  setDocuments(docs: Document[]) {
+    this.documents = docs;
+  }
+
+  async addDocumentWithEmbedding(
+    content: string,
+    embedding: number[],
+    metadata: Record<string, any> = {},
+  ): Promise<Document> {
+    const doc: Document = {
+      id: uuidv4(),
+      content,
+      metadata,
+      embedding,
+    };
+
+    this.documents.push(doc);
+    await this.save();
+    return doc;
+  }
+
   async addDocument(
     content: string,
     metadata: Record<string, any> = {},
