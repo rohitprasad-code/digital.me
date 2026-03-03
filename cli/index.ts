@@ -29,8 +29,9 @@ program
   });
 
 program
-  .command("ingest")
-  .description("Ingest data from all sources (including GitHub)")
+  .command("sync")
+  .alias("ingest")
+  .description("Incrementally sync and embed new/changed data from all sources")
   .action(async () => {
     try {
       await ingest();

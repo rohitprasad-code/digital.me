@@ -3,9 +3,9 @@ import path from "path";
 import { log } from "../../utils/logger";
 import { DYNAMIC_DIR } from "../../utils/paths";
 import { StravaClient } from "./client";
-import { VectorStore } from "../../memory/vector_store";
+import { EmbeddingPipeline } from "../../jobs/embedding_pipeline";
 
-export async function ingestStrava(vectorStore: VectorStore) {
+export async function ingestStrava(pipeline: EmbeddingPipeline) {
   try {
     const strava = new StravaClient();
     const stravaData: any = {};
@@ -20,7 +20,7 @@ export async function ingestStrava(vectorStore: VectorStore) {
       if (profile.bio) profileContent += `\nBio: ${profile.bio}`;
       profileContent += `\nStats: ${profile.follower_count} followers, ${profile.friend_count} following`;
 
-      await vectorStore.addDocument(profileContent, {
+      await pipeline.syncDocument(profileContent, {
         source: "strava",
         type: "strava_profile",
       });
@@ -43,7 +43,7 @@ export async function ingestStrava(vectorStore: VectorStore) {
 
         const content = `Strava Activity: ${activity.name}\nType: ${activity.type} (${activity.sport_type})\nDate: ${activity.start_date_local}\nLocation: ${activity.location_city}, ${activity.location_state}, ${activity.location_country}\nDistance: ${distanceKm} km\nMoving Time: ${timeFormatted}\nElevation Gain: ${activity.total_elevation_gain} meters\nAverage Speed: ${speedKmH} km/h`;
 
-        await vectorStore.addDocument(content, {
+        await pipeline.syncDocument(content, {
           source: "strava",
           type: "strava_activity",
           name: activity.name,

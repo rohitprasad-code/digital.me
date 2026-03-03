@@ -1,10 +1,10 @@
-import { VectorStore } from "../memory/vector_store";
+import { EmbeddingPipeline } from "../jobs/embedding_pipeline";
 import { ingestGitHub } from "./github/index";
 import { ingestStrava } from "./strava/index";
 
 export interface Integrator {
   name: string;
-  ingest: (vectorStore: VectorStore) => Promise<void>;
+  ingest: (pipeline: EmbeddingPipeline) => Promise<void>;
 }
 
 export const integrators: Integrator[] = [

@@ -12,6 +12,7 @@ import {
   determineFileRole,
 } from "./data_processing/directory_crawler";
 import { UnstructuredConverter } from "./data_processing/unstructured_converter";
+import { EmbeddingPipeline } from "../jobs/embedding_pipeline";
 
 // Interface for structured resume data
 interface ResumeData {
@@ -77,7 +78,10 @@ async function parseResumeWithLLM(text: string): Promise<ResumeData | null> {
   }
 }
 
-async function processStaticJson(filePath: string, vectorStore: VectorStore) {
+async function processStaticJson(
+  filePath: string,
+  pipeline: EmbeddingPipeline,
+) {
   try {
     const filename = path.basename(filePath);
     const content = await fs.readFile(filePath, "utf-8");
@@ -85,28 +89,44 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
 
     // We can assume format of me.json style or just add whole JSON string
     if (data.profile) {
-      await vectorStore.addDocument(
+      await pipeline.syncDocument(
         `Profile: ${JSON.stringify(data.profile)}`,
-        { source: filename, type: "profile" },
+        {
+          source: filename,
+          type: "profile",
+        },
+        content,
       );
     }
     if (data.skills) {
-      await vectorStore.addDocument(`Skills: ${data.skills.join(", ")}`, {
-        source: filename,
-        type: "skills",
-      });
+      await pipeline.syncDocument(
+        `Skills: ${data.skills.join(", ")}`,
+        {
+          source: filename,
+          type: "skills",
+        },
+        content,
+      );
     }
     if (data.interests) {
-      await vectorStore.addDocument(`Interests: ${data.interests.join(", ")}`, {
-        source: filename,
-        type: "interests",
-      });
+      await pipeline.syncDocument(
+        `Interests: ${data.interests.join(", ")}`,
+        {
+          source: filename,
+          type: "interests",
+        },
+        content,
+      );
     }
     if (data.goals) {
-      await vectorStore.addDocument(`Goals: ${data.goals.join(", ")}`, {
-        source: filename,
-        type: "goals",
-      });
+      await pipeline.syncDocument(
+        `Goals: ${data.goals.join(", ")}`,
+        {
+          source: filename,
+          type: "goals",
+        },
+        content,
+      );
     }
 
     // Save to processed/static for representing state
@@ -123,7 +143,7 @@ async function processStaticJson(filePath: string, vectorStore: VectorStore) {
   }
 }
 
-async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
+async function processStaticPdf(filePath: string, pipeline: EmbeddingPipeline) {
   try {
     const filename = path.basename(filePath);
     const buffer = await fs.readFile(filePath);
@@ -147,17 +167,25 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
       if (structuredData.experience) {
         for (const exp of structuredData.experience) {
           const content = `Experience at ${exp.company} as ${exp.role} (${exp.duration}):\n${exp.details.join("\n")}`;
-          await vectorStore.addDocument(content, {
-            source: filename,
-            type: "experience",
-            company: exp.company,
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "experience",
+              company: exp.company,
+            },
+            text,
+          );
           const summary = `Work History: Employed at ${exp.company} as ${exp.role} since ${exp.duration.split("-")[0].trim()}.`;
-          await vectorStore.addDocument(summary, {
-            source: filename,
-            type: "experience_summary",
-            company: exp.company,
-          });
+          await pipeline.syncDocument(
+            summary,
+            {
+              source: filename,
+              type: "experience_summary",
+              company: exp.company,
+            },
+            text,
+          );
         }
       }
 
@@ -165,11 +193,15 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
       if (structuredData.projects) {
         for (const proj of structuredData.projects) {
           const content = `Project: ${proj.name}\nTech Stack: ${proj.technologies.join(", ")}\nDescription: ${proj.description}`;
-          await vectorStore.addDocument(content, {
-            source: filename,
-            type: "project",
-            name: proj.name,
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "project",
+              name: proj.name,
+            },
+            text,
+          );
         }
       }
 
@@ -177,10 +209,14 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
       if (structuredData.education) {
         for (const edu of structuredData.education) {
           const content = `Education: ${JSON.stringify(edu)}`;
-          await vectorStore.addDocument(content, {
-            source: filename,
-            type: "education",
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "education",
+            },
+            text,
+          );
         }
       }
 
@@ -188,10 +224,14 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
       if (structuredData.skills) {
         for (const skillCat of structuredData.skills) {
           const content = `Resume Skills (${skillCat.category}): ${skillCat.items.join(", ")}`;
-          await vectorStore.addDocument(content, {
-            source: filename,
-            type: "skills",
-          });
+          await pipeline.syncDocument(
+            content,
+            {
+              source: filename,
+              type: "skills",
+            },
+            text,
+          );
         }
       }
 
@@ -206,7 +246,7 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
 
       for (const chunk of chunks) {
         if (chunk.content.trim().length > 0) {
-          await vectorStore.addDocument(chunk.content, {
+          await pipeline.syncDocument(chunk.content, {
             source: filename,
             fallback: true,
             ...chunk.metadata,
@@ -228,7 +268,7 @@ async function processStaticPdf(filePath: string, vectorStore: VectorStore) {
 async function processGenericText(
   filePath: string,
   role: string,
-  vectorStore: VectorStore,
+  pipeline: EmbeddingPipeline,
 ) {
   try {
     const filename = path.basename(filePath);
@@ -249,10 +289,14 @@ async function processGenericText(
         );
 
         const metaContent = `Metadata for ${filename}:\nTitle: ${structuredData.title}\nSummary: ${structuredData.summary}\nTopics: ${(structuredData.topics || []).join(", ")}`;
-        await vectorStore.addDocument(metaContent, {
-          source: filename,
-          type: "metadata",
-        });
+        await pipeline.syncDocument(
+          metaContent,
+          {
+            source: filename,
+            type: "metadata",
+          },
+          content,
+        );
       }
     }
 
@@ -260,7 +304,7 @@ async function processGenericText(
 
     for (const chunk of chunks) {
       if (chunk.content.trim().length > 0) {
-        await vectorStore.addDocument(chunk.content, {
+        await pipeline.syncDocument(chunk.content, {
           source: filename,
           type: role === "code" ? "code" : "document",
           fallback: false,
@@ -284,10 +328,10 @@ async function ingest() {
   log.info("Ingestion started");
   const vectorStore = new VectorStore();
 
-  log.info("Clearing existing vector store...");
-  await vectorStore.clear();
+  // Load existing vectors (we DO NOT clear it anymore, so we can do incremental syncs)
+  await vectorStore.load();
 
-  await vectorStore.clear();
+  const pipeline = new EmbeddingPipeline(vectorStore);
 
   const publicPath = path.resolve(process.cwd(), "public");
 
@@ -298,15 +342,15 @@ async function ingest() {
       const ext = path.extname(filePath).toLowerCase();
 
       if (role === "pdf") {
-        await processStaticPdf(filePath, vectorStore);
+        await processStaticPdf(filePath, pipeline);
       } else if (role === "structured" && ext === ".json") {
-        await processStaticJson(filePath, vectorStore);
+        await processStaticJson(filePath, pipeline);
       } else if (
         role === "code" ||
         role === "unstructured" ||
         (role === "structured" && ext !== ".json")
       ) {
-        await processGenericText(filePath, role, vectorStore);
+        await processGenericText(filePath, role, pipeline);
       } else {
         log.warn(`Skipping unknown or unsupported file format: ${filePath}`);
       }
@@ -320,13 +364,16 @@ async function ingest() {
 
   for (const integrator of integrators) {
     try {
-      await integrator.ingest(vectorStore);
+      await integrator.ingest(pipeline);
     } catch (err) {
       log.error(`Integrator ${integrator.name} failed`, {
         error: err instanceof Error ? err.message : String(err),
       });
     }
   }
+
+  // Final step: clean up any old documents that weren't synced today
+  await pipeline.cleanupStaleDocuments();
 
   log.info("Ingestion complete!");
 }
