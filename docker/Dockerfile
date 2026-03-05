@@ -18,8 +18,8 @@ ENV NEXT_TELEMETRY_DISABLED=1
 # Build the Next.js app
 RUN npm run build
 
-# We expose 7000 for the Next.js app
-EXPOSE 7000
+# Expose port 7001 for the Next.js app
+EXPOSE 7001
 
 # Set Node environment to production
 ENV NODE_ENV=production

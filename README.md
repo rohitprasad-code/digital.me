@@ -56,11 +56,14 @@ digital-me/
 │   ├── ingest.ts         # Orchestrates full ingestion pipeline
 │   ├── router.ts         # MemoryRouter — routes queries by type
 │   ├── vector_store/     # Embedding storage & cosine similarity search
-│   ├── data_processing/  # Document parsing, structure analysis & chunking
-│   └── static/           # Static data sources (me.json, resume.pdf)
+│   └── data_processing/  # Document parsing, structure analysis & chunking
+│       └── parsers/      # Parsers for PDF, Markdown, JSON and all
 ├── model/
 │   ├── llm/              # Ollama client configuration
 │   └── prompts/          # System prompts & prompt templates
+├── public/               # Raw static data sources
+│   ├── codes/            # Structured config (e.g., me.json)
+│   └── documents/        # PDFs, Markdown, Text (e.g., resume.pdf)
 └── scripts/
     └── dev-cli.js        # Dev helper for CLI execution
 ```
@@ -99,7 +102,7 @@ STRAVA_ACCESS_TOKEN=your_strava_token
 
 # Optional: Override API URL
 # e.g.:
-# DIGITAL_ME_API_URL=http://localhost:7000/api
+# DIGITAL_ME_API_URL=http://localhost:7001/api
 ```
 
 ### 3. Prepare Your Data
@@ -132,6 +135,7 @@ npm run cli chat
 | `npm run build`      | Production build                              |
 | `npm run start`      | Start production server                       |
 | `npm run cli ingest` | Ingest all data sources into the vector store |
+| `npm run cli sync`   | Sync latest changes into vector store         |
 | `npm run cli chat`   | Launch the interactive chat CLI               |
 | `npm run test`       | Run tests with Vitest                         |
 | `npm run lint`       | Lint with ESLint                              |

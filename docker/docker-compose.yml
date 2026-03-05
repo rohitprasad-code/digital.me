@@ -5,26 +5,13 @@ services:
       dockerfile: docker/Dockerfile
     container_name: digital-me-app
     ports:
-      - "7000:7000"
+      - "7001:7001"
     environment:
-      - OLLAMA_HOST=http://ollama:11434
-      - GITHUB_TOKEN=${GITHUB_TOKEN:-}
-      - STRAVA_ACCESS_TOKEN=${STRAVA_ACCESS_TOKEN:-}
+      - OLLAMA_HOST=http://host.docker.internal:11434
+    env_file:
+      - .env.docker
     volumes:
       # Mount data directory to persist vector DB, processed data, and reports
       - ../data:/app/data
-    depends_on:
-      - ollama
-
-  ollama:
-    image: ollama/ollama
-    container_name: digital-me-ollama
-    ports:
-      - "11434:11434"
-    volumes:
-      - ollama_data:/root/.ollama
-    # Note: To use Llama 3, you need to pull it inside the container once:
-    # docker exec -it digital-me-ollama ollama pull llama3
-
-volumes:
-  ollama_data:
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
