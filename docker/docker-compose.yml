@@ -3,13 +3,14 @@ services:
     build:
       context: ../
       dockerfile: docker/Dockerfile
-    container_name: digital-me-app
+    container_name: digital-me
+    image: debugger612/digital-me:latest
     ports:
       - "7001:7001"
     environment:
       - OLLAMA_HOST=http://host.docker.internal:11434
     env_file:
-      - .env.docker
+      - ./.env.docker
     volumes:
       # Mount data directory to persist vector DB, processed data, and reports
       - ../data:/app/data
