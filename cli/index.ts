@@ -7,6 +7,12 @@ import { log } from "../utils/logger";
 import { generateWeeklyReport } from "../jobs/weekly_report";
 import fs from "fs";
 import path from "path";
+import readline from "readline";
+import {
+  getAuthorizationUrl,
+  exchangeCodeForTokens,
+} from "../integrations/strava/auth";
+import { StravaClient } from "../integrations/strava/client";
 
 // Load environment variables from .env* files
 loadEnvConfig(process.cwd());
@@ -72,7 +78,7 @@ program
     }
     const files = fs
       .readdirSync(reportsDir)
-      .filter((f) => f.endsWith(".md"))
+      .filter((f: string) => f.endsWith(".md"))
       .sort()
       .reverse();
     if (files.length === 0) {
@@ -80,7 +86,96 @@ program
       return;
     }
     log.info("Available reports:");
-    files.forEach((f) => console.log(`- ${f.replace(".md", "")}`));
+    files.forEach((f: string) => console.log(`- ${f.replace(".md", "")}`));
+  });
+
+program
+  .command("strava:auth")
+  .description("Authenticate with Strava and update tokens")
+  .action(async () => {
+    const clientId = process.env.STRAVA_CLIENT_ID;
+    const clientSecret = process.env.STRAVA_CLIENT_SECRET;
+    const redirectUri = "http://localhost:7001";
+
+    if (!clientId || !clientSecret) {
+      log.error(
+        "STRAVA_CLIENT_ID and STRAVA_CLIENT_SECRET must be set in .env.local",
+      );
+      process.exit(1);
+    }
+
+    const authUrl = getAuthorizationUrl(
+      clientId,
+      redirectUri,
+      "read,activity:read,activity:read_all",
+    );
+
+    console.log("\n--- Strava OAuth Helper ---\n");
+    console.log("1. Open this URL in your browser to authorize:");
+    console.log(authUrl);
+    console.log(
+      "\n2. After authorizing, you will be redirected to a URL that looks like:",
+    );
+    console.log(
+      `${redirectUri}/?state=&code=YOUR_AUTHORIZATION_CODE&scope=...`,
+    );
+    console.log("\n3. Copy the 'code' value and paste it here:");
+
+    const rl = readline.createInterface({
+      input: process.stdin,
+      output: process.stdout,
+    });
+
+    rl.question("Enter authorization code: ", async (code) => {
+      try {
+        log.info("Exchanging code for tokens...");
+        const tokens = await exchangeCodeForTokens(
+          clientId,
+          clientSecret,
+          code.trim(),
+        );
+
+        console.log("\n--- TOKENS RECEIVED ---");
+        console.log(`Access Token:  ${tokens.access_token}`);
+        console.log(`Refresh Token: ${tokens.refresh_token}`);
+        console.log(
+          `Expires At:    ${new Date(tokens.expires_at * 1000).toLocaleString()}`,
+        );
+        console.log("------------------------\n");
+
+        log.info("Please update your .env.local file with these values.");
+      } catch (error) {
+        log.error(
+          "Error exchanging code",
+          error instanceof Error ? error.message : String(error),
+        );
+      } finally {
+        rl.close();
+      }
+    });
+  });
+
+program
+  .command("strava:test")
+  .description("Test Strava API connection by fetching profile")
+  .action(async () => {
+    try {
+      const client = new StravaClient();
+      log.info("Fetching Strava profile...");
+      const profile = await client.getProfile();
+
+      if (profile) {
+        log.success("Strava connection verified!");
+        console.log(JSON.stringify(profile, null, 2));
+      } else {
+        log.error("Failed to fetch profile (returned null)");
+      }
+    } catch (error) {
+      log.error(
+        "Strava test failed",
+        error instanceof Error ? error.message : String(error),
+      );
+    }
   });
 
 program.parse(process.argv);
