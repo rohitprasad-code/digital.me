@@ -1,20 +1,16 @@
+import { ensureValidToken } from "./token";
+
 export class StravaClient {
-  private accessToken: string;
+  private accessToken: string | null = null;
   private baseUrl = "https://www.strava.com/api/v3";
 
-  constructor() {
-    const token = process.env.STRAVA_ACCESS_TOKEN;
-
-    if (!token) {
-      throw new Error(
-        "STRAVA_ACCESS_TOKEN must be set in environment variables",
-      );
-    }
-
-    this.accessToken = token;
-  }
+  constructor() {}
 
   private async fetchStrava(endpoint: string) {
+    if (!this.accessToken) {
+      this.accessToken = await ensureValidToken();
+    }
+
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       headers: {
         Authorization: `Bearer ${this.accessToken}`,
