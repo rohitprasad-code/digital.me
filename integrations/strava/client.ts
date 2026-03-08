@@ -1,4 +1,4 @@
-import { ensureValidToken } from "./token";
+import { ensureValidToken, forceRefresh } from "./token";
 
 export class StravaClient {
   private accessToken: string | null = null;
@@ -6,16 +6,27 @@ export class StravaClient {
 
   constructor() {}
 
-  private async fetchStrava(endpoint: string) {
+  private async getToken(): Promise<string> {
     if (!this.accessToken) {
       this.accessToken = await ensureValidToken();
     }
+    return this.accessToken;
+  }
+
+  private async fetchStrava(endpoint: string, isRetry = false): Promise<any> {
+    const token = await this.getToken();
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
       headers: {
-        Authorization: `Bearer ${this.accessToken}`,
+        Authorization: `Bearer ${token}`,
       },
     });
+
+    // Auto-retry once on 401 by forcing a token refresh
+    if (response.status === 401 && !isRetry) {
+      this.accessToken = await forceRefresh();
+      return this.fetchStrava(endpoint, true);
+    }
 
     if (!response.ok) {
       let errorMessage = response.statusText;
@@ -58,7 +69,6 @@ export class StravaClient {
         `/athlete/activities?per_page=${limit}`,
       );
 
-      // The API returns an array, but if it fails we might get something else.
       if (!Array.isArray(data)) {
         return [];
       }

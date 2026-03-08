@@ -7,13 +7,8 @@ import { log } from "../utils/logger";
 import { generateWeeklyReport } from "../jobs/weekly_report";
 import fs from "fs";
 import path from "path";
-import readline from "readline";
-import {
-  getAuthorizationUrl,
-  exchangeCodeForTokens,
-} from "../integrations/strava/auth";
 import { StravaClient } from "../integrations/strava/client";
-import { ensureValidToken } from "../integrations/strava/token";
+import { ensureValidToken, getTokenStatus } from "../integrations/strava/token";
 
 // Load environment variables from .env* files
 loadEnvConfig(process.cwd());
@@ -95,7 +90,7 @@ program
   .description("Authenticate with Strava and update tokens")
   .action(async () => {
     try {
-      console.log("\n--- Strava OAuth Helper ---\n");
+      console.log("\n--- Strava OAuth ---\n");
       await ensureValidToken();
     } catch (error) {
       log.error(
@@ -104,6 +99,37 @@ program
       );
       process.exit(1);
     }
+  });
+
+program
+  .command("strava:status")
+  .description("Check Strava token health without making an API call")
+  .action(() => {
+    console.log("\n--- Strava Token Status ---\n");
+    const { status, expiresAt } = getTokenStatus();
+    switch (status) {
+      case "valid":
+        log.success(
+          `✓ Token is valid. Expires at ${expiresAt!.toLocaleString()}`,
+        );
+        break;
+      case "expired":
+        log.warn(
+          `⟳ Token is expired (was valid until ${expiresAt!.toLocaleString()}). Run \`npm run cli strava:auth\` to refresh.`,
+        );
+        break;
+      case "missing":
+        log.warn(
+          "⚠ No Strava tokens found. Run `npm run cli strava:auth` to authorize.",
+        );
+        break;
+      case "unknown":
+        log.warn(
+          "⚠ Tokens exist but expiration is unknown. Run `npm run cli strava:auth` to refresh.",
+        );
+        break;
+    }
+    console.log();
   });
 
 program
