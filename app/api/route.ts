@@ -1,12 +1,15 @@
-import { NextResponse } from "next/server";
+import { getLLMProvider } from "@/model/llm/provider";
 
 export async function GET() {
-  return NextResponse.json({
-    status: "ok",
-    message: "Digital-Me is running",
-    lopmonaut: {
-      health: "operational",
-      status: "online",
-    },
-  });
+  try {
+    const provider = getLLMProvider();
+    await provider.healthCheck();
+    return new Response("Digital-Me is running");
+  } catch (error) {
+    console.error("Health check failed:", error);
+    return new Response("Service Unavailable: AI Backend is offline", {
+      status: 503,
+      statusText: "Service Unavailable",
+    });
+  }
 }
