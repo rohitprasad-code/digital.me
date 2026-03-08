@@ -25,7 +25,8 @@ Fetches your Strava athlete profile and recent activities via the [Strava API v3
 | Profile    | Name, location, bio, follower count              |
 | Activities | Last 20 — type, distance, time, elevation, speed |
 
-**Required env var:** `STRAVA_ACCESS_TOKEN`
+**Required env vars:** `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`
+_(access/refresh tokens are managed automatically after first OAuth flow)_
 
 ## File Structure
 
@@ -36,8 +37,10 @@ integrations/
 │   ├── client.ts         # GitHubClient (Octokit wrapper)
 │   └── index.ts          # ingestGitHub() — fetches & stores data
 └── strava/
-    ├── client.ts         # StravaClient (REST client)
-    └── index.ts          # ingestStrava() — fetches & stores data
+    ├── auth.ts           # OAuth URL builder + token exchange
+    ├── client.ts         # StravaClient (REST client with 401 retry)
+    ├── index.ts          # ingestStrava() — fetches & stores data
+    └── token.ts          # Token lifecycle — ensure, refresh, save
 ```
 
 ## Adding a New Integration
