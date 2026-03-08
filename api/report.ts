@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
-import { generateWeeklyReport } from "../../../jobs/weekly_report";
+import { generateWeeklyReport } from "../jobs/weekly_report";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
