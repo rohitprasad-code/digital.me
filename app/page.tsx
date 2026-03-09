@@ -14,45 +14,53 @@ export default function Dashboard() {
     <Box
       style={{
         backgroundColor: "var(--color-background)",
-        minHeight: "100vh",
-        padding: "32px 0",
+        height: "100vh",
+        padding: "24px",
+        overflow: "hidden",
+        display: "flex",
+        flexDirection: "column",
       }}
     >
-      <Container size="4">
-        <Flex direction="column" gap="6">
-          {/* Dashboard Header */}
-          <Flex justify="between" align="end" wrap="wrap" gap="4">
-            <Box>
-              <Heading size="8" mb="2" style={{ letterSpacing: "-0.02em" }}>
-                Digital Twin Control Panel
-              </Heading>
-              <Text size="3" color="gray">
-                Manage router contexts, view sync statuses, and simulate
-                interactions.
-              </Text>
-            </Box>
-          </Flex>
+      <Flex direction="column" gap="6" style={{ height: "100%" }}>
+        {/* Dashboard Header */}
+        <Flex justify="between" align="end" wrap="wrap" gap="4">
+          <Box>
+            <Heading size="8" mb="2" style={{ letterSpacing: "-0.02em" }}>
+              Digital Twin Control Panel
+            </Heading>
+            <Text size="3" color="gray">
+              Manage router contexts, view sync statuses, and simulate
+              interactions.
+            </Text>
+          </Box>
+        </Flex>
 
-          {/* Main Dashboard Grid */}
-          <Grid
-            columns={{ initial: "1", md: "3" }}
-            gap="6"
-            style={{ minHeight: "65vh" }}
+        {/* Main Dashboard Grid */}
+        <Grid
+          columns={{ initial: "1", md: "4" }}
+          gap="6"
+          style={{ flexGrow: 1, minHeight: 0 }}
+        >
+          {/* Left Column: Controls & Status */}
+          <Flex
+            direction="column"
+            justify="between"
+            gap="5"
+            style={{ overflowY: "auto", paddingRight: "8px" }}
           >
-            {/* Left Column: Controls & Status */}
             <Flex direction="column" gap="5">
               <ContextSelector mode={mode} setMode={setMode} />
               <IntegrationStatus />
-              <WeeklyReport />
             </Flex>
+            <WeeklyReport />
+          </Flex>
 
-            {/* Right Column: Chat Interface */}
-            <Box style={{ gridColumn: "span 2", height: "100%" }}>
-              <ChatInterface mode={mode} />
-            </Box>
-          </Grid>
-        </Flex>
-      </Container>
+          {/* Right Column: Chat Interface */}
+          <Box style={{ gridColumn: "span 3", height: "100%", minHeight: 0 }}>
+            <ChatInterface mode={mode} />
+          </Box>
+        </Grid>
+      </Flex>
     </Box>
   );
 }
