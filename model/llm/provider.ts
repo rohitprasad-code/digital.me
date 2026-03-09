@@ -29,12 +29,17 @@ let _cachedProvider: LLMProvider | null = null;
 export function getLLMProvider(): LLMProvider {
   if (_cachedProvider) return _cachedProvider;
 
-  const provider = (process.env.LLM_PROVIDER || "ollama").toLowerCase();
+  const provider = (process.env.LLM_PROVIDER || "groq").toLowerCase();
 
   switch (provider) {
     case "gemini": {
       const { GeminiProvider } = require("./gemini/client");
       _cachedProvider = new GeminiProvider();
+      break;
+    }
+    case "groq": {
+      const { GroqProvider } = require("./groq/client");
+      _cachedProvider = new GroqProvider();
       break;
     }
     case "ollama":

@@ -43,8 +43,8 @@ setup_env_file() {
     echo -e "${YELLOW}Setting up environment variables...${NC}"
     if [ ! -f .env.local ]; then
         cat <<EOT > .env.local
-# LLM Provider: "ollama" or "gemini"
-LLM_PROVIDER=ollama
+# LLM Provider: "groq", "ollama" or "gemini"
+LLM_PROVIDER=groq
 
 # GitHub integration
 GITHUB_TOKEN=your_github_token
@@ -52,6 +52,11 @@ GITHUB_USERNAME=your_github_username
 
 # Strava integration
 STRAVA_ACCESS_TOKEN=your_strava_token
+
+# Groq
+# GROQ_CHAT_MODEL=llama-3.1-8b-instant
+# GROQ_EMBEDDING_MODEL=nomic-embed-text-v1_5
+# GROQ_API_KEY=your_groq_api_key
 
 # Gemini (optional — cloud-based, no local LLM needed)
 # GEMINI_API_KEY=your_gemini_api_key

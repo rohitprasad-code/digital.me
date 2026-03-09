@@ -2,7 +2,7 @@ import * as readline from "readline";
 import chalk from "chalk";
 import { ContextMode } from "../model/prompts/core";
 
-const DEFAULT_API_URL = "http://localhost:7001/api";
+const DEFAULT_API_URL = "http://localhost:7001/api/chat";
 
 export async function startChat(
   apiUrl: string = DEFAULT_API_URL,
