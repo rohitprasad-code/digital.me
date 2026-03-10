@@ -57,7 +57,7 @@ export default function Dashboard() {
 
           {/* Right Column: Chat Interface */}
           <Box style={{ gridColumn: "span 3", height: "100%", minHeight: 0 }}>
-            <ChatInterface mode={mode} />
+            <ChatInterface mode={mode} setMode={setMode} />
           </Box>
         </Grid>
       </Flex>

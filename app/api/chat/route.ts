@@ -27,7 +27,7 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
-    const { messages, mode } = await req.json();
+    const { messages, mode, provider } = await req.json();
 
     // Validate mode if provided
     if (mode && !isValidMode(mode)) {
@@ -79,12 +79,12 @@ export async function POST(req: NextRequest) {
       ...messages,
     ];
 
-    const provider = getLLMProvider();
+    const llmProvider = getLLMProvider(provider);
 
     // Create a ReadableStream from the provider's streaming response
     const stream = new ReadableStream({
       async start(controller) {
-        for await (const chunk of provider.chatStream(allMessages)) {
+        for await (const chunk of llmProvider.chatStream(allMessages)) {
           controller.enqueue(chunk);
         }
         controller.close();

@@ -10,6 +10,7 @@ import {
   Text,
   Card,
   Avatar,
+  Select,
 } from "@radix-ui/themes";
 import { PaperPlaneIcon } from "@radix-ui/react-icons";
 import { Mode } from "./ContextSelector";
@@ -21,9 +22,10 @@ type Message = {
 
 interface ChatInterfaceProps {
   mode: Mode;
+  setMode: (mode: Mode) => void;
 }
 
-export function ChatInterface({ mode }: ChatInterfaceProps) {
+export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
   const [messages, setMessages] = useState<Message[]>([
     {
       role: "assistant",
@@ -33,7 +35,27 @@ export function ChatInterface({ mode }: ChatInterfaceProps) {
   ]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
+  const [availableModels, setAvailableModels] = useState<
+    { id: string; name: string }[]
+  >([]);
+  const [selectedModel, setSelectedModel] = useState<string>("groq");
   const viewportRef = useRef<HTMLDivElement>(null);
+
+  useEffect(() => {
+    async function fetchModels() {
+      try {
+        const res = await fetch("/api/models");
+        const data = await res.json();
+        setAvailableModels(data.models || []);
+        if (data.models?.length > 0) {
+          setSelectedModel(data.models[0].id);
+        }
+      } catch (err) {
+        console.error("Failed to fetch available models", err);
+      }
+    }
+    fetchModels();
+  }, []);
 
   useEffect(() => {
     if (viewportRef.current) {
@@ -57,6 +79,7 @@ export function ChatInterface({ mode }: ChatInterfaceProps) {
         body: JSON.stringify({
           messages: [...messages, userMessage],
           mode,
+          provider: selectedModel,
         }),
       });
 
@@ -195,9 +218,46 @@ export function ChatInterface({ mode }: ChatInterfaceProps) {
               </IconButton>
             </TextField.Slot>
           </TextField.Root>
-          <Text size="1" color="gray" align="center" as="div" mt="2">
-            LLM Context Mode: {mode.charAt(0).toUpperCase() + mode.slice(1)}
-          </Text>
+          <Flex justify="between" align="center" mt="2">
+            <Flex align="center" gap="2">
+              <Text size="1" color="gray">
+                Context Mode:
+              </Text>
+              <Select.Root
+                size="1"
+                value={mode}
+                onValueChange={(val) => setMode(val as Mode)}
+              >
+                <Select.Trigger variant="ghost" />
+                <Select.Content>
+                  <Select.Item value="default">Auto</Select.Item>
+                  <Select.Item value="recruiter">Recruiter</Select.Item>
+                  <Select.Item value="social">Friend</Select.Item>
+                </Select.Content>
+              </Select.Root>
+            </Flex>
+            {availableModels.length > 0 && (
+              <Flex align="center" gap="2">
+                <Text size="1" color="gray">
+                  LLM Provider:
+                </Text>
+                <Select.Root
+                  size="1"
+                  value={selectedModel}
+                  onValueChange={setSelectedModel}
+                >
+                  <Select.Trigger variant="ghost" />
+                  <Select.Content>
+                    {availableModels.map((m) => (
+                      <Select.Item key={m.id} value={m.id}>
+                        {m.name}
+                      </Select.Item>
+                    ))}
+                  </Select.Content>
+                </Select.Root>
+              </Flex>
+            )}
+          </Flex>
         </form>
       </Flex>
     </Card>

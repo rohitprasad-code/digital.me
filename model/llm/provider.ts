@@ -25,11 +25,19 @@ export interface LLMProvider {
 }
 
 let _cachedProvider: LLMProvider | null = null;
+let _currentProviderName: string | null = null;
 
-export function getLLMProvider(): LLMProvider {
-  if (_cachedProvider) return _cachedProvider;
+export function getLLMProvider(providerName?: string): LLMProvider {
+  const provider = (
+    providerName ||
+    process.env.LLM_PROVIDER ||
+    "groq"
+  ).toLowerCase();
 
-  const provider = (process.env.LLM_PROVIDER || "groq").toLowerCase();
+  // Return cached if it's the same provider
+  if (_cachedProvider && _currentProviderName === provider) {
+    return _cachedProvider;
+  }
 
   switch (provider) {
     case "gemini": {
@@ -50,5 +58,6 @@ export function getLLMProvider(): LLMProvider {
     }
   }
 
+  _currentProviderName = provider;
   return _cachedProvider!;
 }
