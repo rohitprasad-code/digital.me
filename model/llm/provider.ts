@@ -41,17 +41,20 @@ export function getLLMProvider(providerName?: string): LLMProvider {
 
   switch (provider) {
     case "gemini": {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { GeminiProvider } = require("./gemini/client");
       _cachedProvider = new GeminiProvider();
       break;
     }
     case "groq": {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { GroqProvider } = require("./groq/client");
       _cachedProvider = new GroqProvider();
       break;
     }
     case "ollama":
     default: {
+      // eslint-disable-next-line @typescript-eslint/no-require-imports
       const { OllamaProvider } = require("./ollama/client");
       _cachedProvider = new OllamaProvider();
       break;

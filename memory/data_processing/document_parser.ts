@@ -10,7 +10,7 @@ export interface ContentBlock {
   type: BlockType;
   content: string;
   level?: number;
-  metadata?: Record<string, any>;
+  metadata?: Record<string, unknown>;
 }
 
 export class DocumentParser {

@@ -28,7 +28,7 @@ export class GroqProvider implements LLMProvider {
       options?.model || process.env.GROQ_CHAT_MODEL || DEFAULT_MODEL;
 
     const response = await groq.chat.completions.create({
-      messages: messages as any,
+      messages: messages as { role: "system" | "user" | "assistant"; content: string }[],
       model: modelName,
       stream: false,
     });
@@ -45,7 +45,7 @@ export class GroqProvider implements LLMProvider {
       options?.model || process.env.GROQ_CHAT_MODEL || DEFAULT_MODEL;
 
     const stream = await groq.chat.completions.create({
-      messages: messages as any,
+      messages: messages as { role: "system" | "user" | "assistant"; content: string }[],
       model: modelName,
       stream: true,
     });

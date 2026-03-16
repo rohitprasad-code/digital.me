@@ -9,7 +9,7 @@ export class UnstructuredConverter {
   static async extractStructuredData(
     text: string,
     filename: string,
-  ): Promise<any> {
+  ): Promise<Record<string, unknown> | null> {
     console.log(
       `Extracting structured entities for unstructured file: ${filename}`,
     );

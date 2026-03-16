@@ -6,29 +6,32 @@ import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
 import { getLLMProvider } from "../../../model/llm/provider";
 import { processDocument } from "../index";
 
-const { PDFParse } = require("pdf-parse");
+// @ts-expect-error - pdf-parse lacks proper types
+import pdf from "pdf-parse";
 
 export interface ResumeData {
-  education: any[];
-  experience: {
+  education?: { institution: string; degree: string; year: string }[];
+  experience?: {
     company: string;
     role: string;
     duration: string;
     details: string[];
   }[];
-  projects: {
+  projects?: {
     name: string;
     technologies: string[];
     description: string;
   }[];
-  skills: {
+  skills?: {
     category: string;
     items: string[];
   }[];
 }
 
 export class PdfParser {
-  static async parseResumeWithLLM(text: string): Promise<ResumeData | null> {
+  private static async extractStructuredData(
+    text: string,
+  ): Promise<ResumeData | null> {
     const prompt = `
     You are an expert resume parser for a JSON-based vector database.
     Extract the following structured data from the resume text below and return it as a VALID JSON object.
@@ -66,9 +69,9 @@ export class PdfParser {
       const jsonEnd = content.lastIndexOf("}");
       if (jsonStart !== -1 && jsonEnd !== -1) {
         const jsonStr = content.substring(jsonStart, jsonEnd + 1);
-        return JSON.parse(jsonStr);
+        return JSON.parse(jsonStr) as ResumeData;
       }
-      return JSON.parse(content);
+      return JSON.parse(content) as ResumeData;
     } catch (error) {
       console.error("LLM Parsing failed:", error);
       return null;
@@ -79,11 +82,11 @@ export class PdfParser {
     try {
       const filename = path.basename(filePath);
       const buffer = await fs.readFile(filePath);
-      const parser = new PDFParse({ data: buffer });
-      const result = await parser.getText();
-      const text = result.text || result;
+      
+      const data = await pdf(buffer);
+      const text = data.text;
 
-      const structuredData = await this.parseResumeWithLLM(text);
+      const structuredData = await this.extractStructuredData(text);
 
       if (structuredData) {
         const jsonName = filename.replace(/\.pdf$/i, ".json");
@@ -96,7 +99,7 @@ export class PdfParser {
 
         if (structuredData.experience) {
           for (const exp of structuredData.experience) {
-            const content = `Experience at ${exp.company} as ${exp.role} (${exp.duration}):\n${exp.details.join("\n")}`;
+            const content = `Experience at ${exp.company} as ${exp.role} (${exp.duration}):\n${(exp.details || []).join("\n")}`;
             await pipeline.syncDocument(
               content,
               {
@@ -121,7 +124,7 @@ export class PdfParser {
 
         if (structuredData.projects) {
           for (const proj of structuredData.projects) {
-            const content = `Project: ${proj.name}\nTech Stack: ${proj.technologies.join(", ")}\nDescription: ${proj.description}`;
+            const content = `Project: ${proj.name}\nTech Stack: ${(proj.technologies || []).join(", ")}\nDescription: ${proj.description}`;
             await pipeline.syncDocument(
               content,
               {
@@ -150,7 +153,7 @@ export class PdfParser {
 
         if (structuredData.skills) {
           for (const skillCat of structuredData.skills) {
-            const content = `Resume Skills (${skillCat.category}): ${skillCat.items.join(", ")}`;
+            const content = `Resume Skills (${skillCat.category}): ${(skillCat.items || []).join(", ")}`;
             await pipeline.syncDocument(
               content,
               {
@@ -192,3 +195,4 @@ export class PdfParser {
     }
   }
 }
+

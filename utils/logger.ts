@@ -6,7 +6,7 @@ export type LogLevel = "ERROR" | "WARN" | "INFO" | "SUCCESS";
 export async function logEvent(
   level: LogLevel = "INFO",
   message: string,
-  metadata: any = {},
+  metadata: unknown = {},
 ) {
   try {
     console.log(message);
@@ -28,8 +28,10 @@ export async function logEvent(
       .replace(", ", " ");
 
     let logLine = `[${timestamp} IST] [${level}]\t${message}`;
-    if (metadata && Object.keys(metadata).length > 0) {
+    if (metadata && typeof metadata === "object" && Object.keys(metadata).length > 0) {
       logLine += ` | Meta: ${JSON.stringify(metadata)}`;
+    } else if (metadata && typeof metadata !== "object") {
+      logLine += ` | Meta: ${metadata}`;
     }
     logLine += "\n";
 
@@ -40,12 +42,12 @@ export async function logEvent(
 }
 
 export const log = {
-  info: (message: string, metadata: any = {}) =>
+  info: (message: string, metadata: unknown = {}) =>
     logEvent("INFO", message, metadata),
-  error: (message: string, metadata: any = {}) =>
+  error: (message: string, metadata: unknown = {}) =>
     logEvent("ERROR", message, metadata),
-  warn: (message: string, metadata: any = {}) =>
+  warn: (message: string, metadata: unknown = {}) =>
     logEvent("WARN", message, metadata),
-  success: (message: string, metadata: any = {}) =>
+  success: (message: string, metadata: unknown = {}) =>
     logEvent("SUCCESS", message, metadata),
 };

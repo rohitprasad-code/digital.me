@@ -8,7 +8,7 @@ import { EmbeddingPipeline } from "../../jobs/embedding_pipeline";
 export async function ingestGitHub(pipeline: EmbeddingPipeline) {
   try {
     const github = new GitHubClient();
-    const githubData: any = {};
+    const githubData: Record<string, unknown> = {};
 
     // 1. Profile
     const profile = await github.getProfile();

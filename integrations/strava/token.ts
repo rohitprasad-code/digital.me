@@ -71,7 +71,7 @@ export async function ensureValidToken(): Promise<string> {
 
 export async function refreshTokenSilently(): Promise<string | null> {
   try {
-    const { clientId, clientSecret } = getCredentials();
+    getCredentials();
 
     if (!hasTokens()) {
       log.warn(

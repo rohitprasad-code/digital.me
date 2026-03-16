@@ -4,8 +4,76 @@ import * as cheerio from "cheerio";
 import { log } from "../../../utils/logger";
 import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
 import { processDocument } from "../index";
+import { getLLMProvider } from "../../../model/llm/provider";
 
 export class HtmlParser {
+  /**
+   * Extracts structured data from HTML text using an LLM.
+   */
+  static async extractStructuredData(
+    text: string,
+    filename: string,
+  ): Promise<Record<string, unknown> | null> {
+    try {
+      const $ = cheerio.load(text);
+      const structuredData: Record<string, unknown> = {};
+
+      const title = $("title").text().trim();
+      if (title) {
+        structuredData.title = title;
+      }
+
+      const metaDescription = $('meta[name="description"]').attr("content");
+      if (metaDescription) {
+        structuredData.description = metaDescription;
+      }
+
+      const headings: { level: number; text: string }[] = [];
+      $("h1, h2, h3, h4, h5, h6").each((_, el) => {
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const element = el as any;
+        const hName = (element.name || element.tagName || "").toLowerCase();
+        if (hName) {
+          const level = parseInt(hName.replace("h", ""), 10);
+          if (!isNaN(level)) {
+            headings.push({ level, text: $(el).text().trim() });
+          }
+        }
+      });
+      
+      if (headings.length > 0) {
+        structuredData.headings = headings;
+      }
+
+      const provider = getLLMProvider();
+      const prompt = `
+      Extract key entities and summaries from this HTML content.
+      Return a VALID JSON object with: title, summary, topics, and key_entities.
+      
+      HTML Content:
+      ${text.substring(0, 4000)}
+      `;
+
+      const response = await provider.chat(
+        [{ role: "user", content: prompt }],
+        { format: "json" },
+      );
+
+      try {
+        const llmData = JSON.parse(response.content);
+        return { ...structuredData, ...llmData };
+      } catch {
+        return structuredData;
+      }
+    } catch (error) {
+      log.error(
+        `Error extracting structured data from ${filename}`,
+        error instanceof Error ? error.message : "Unknown error",
+      );
+      return null;
+    }
+  }
+
   static async parse(filePath: string, pipeline: EmbeddingPipeline) {
     try {
       const filename = path.basename(filePath);
@@ -16,16 +84,12 @@ export class HtmlParser {
       // Clean up script and style tags
       $("script, style, noscript, nav, footer, header").remove();
 
-      // Convert <pre> tags and tables cleanly to markdown format before getting text
-      // so the processDocument can pick them up cleanly as code blocks / tables
-
       $("pre").each((_, el) => {
         const text = $(el).text().trim();
         $(el).replaceWith(`\n\`\`\`\n${text}\n\`\`\`\n`);
       });
 
       $("table").each((_, el) => {
-        // Attempt to create a basic markdown table
         let mdTable = "\n";
         $(el)
           .find("tr")
@@ -38,7 +102,6 @@ export class HtmlParser {
                 rowText += ` ${cellText} |`;
               });
             mdTable += rowText + "\n";
-            // Add separator after first row assuming it's header
             if (rowIndex === 0) {
               let sep = "|";
               $(tr)
@@ -53,12 +116,17 @@ export class HtmlParser {
         $(el).replaceWith(mdTable);
       });
 
-      // Extract remaining text, it will be mostly unstructured or headings
       $("h1, h2, h3, h4, h5, h6").each((_, el) => {
-        const hName = (el as any).tagName.toLowerCase();
-        const level = parseInt(hName.replace("h", ""), 10);
-        const hashes = "#".repeat(level);
-        $(el).replaceWith(`\n${hashes} ${$(el).text()}\n`);
+        // eslint-disable-next-line @typescript-eslint/no-explicit-any
+        const element = el as any;
+        const hName = (element.name || element.tagName || "").toLowerCase();
+        if (hName) {
+          const level = parseInt(hName.replace("h", ""), 10);
+          if (!isNaN(level)) {
+            const hashes = "#".repeat(level);
+            $(el).replaceWith(`\n${hashes} ${$(el).text()}\n`);
+          }
+        }
       });
 
       const cleanText = $("body")

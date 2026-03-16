@@ -13,7 +13,7 @@ export class StravaClient {
     return this.accessToken;
   }
 
-  private async fetchStrava(endpoint: string, isRetry = false): Promise<any> {
+  private async fetchStrava(endpoint: string, isRetry = false): Promise<unknown> {
     const token = await this.getToken();
 
     const response = await fetch(`${this.baseUrl}${endpoint}`, {
@@ -33,7 +33,7 @@ export class StravaClient {
       try {
         const errorData = await response.json();
         errorMessage = JSON.stringify(errorData);
-      } catch (e) {}
+      } catch {}
       throw new Error(`Strava API Error: ${response.status} - ${errorMessage}`);
     }
 
@@ -42,20 +42,20 @@ export class StravaClient {
 
   async getProfile() {
     try {
-      const data = await this.fetchStrava("/athlete");
+      const data = await this.fetchStrava("/athlete") as Record<string, unknown>;
       return {
-        id: data.id,
-        username: data.username,
-        firstname: data.firstname,
-        lastname: data.lastname,
-        bio: data.bio,
-        city: data.city,
-        state: data.state,
-        country: data.country,
-        sex: data.sex,
-        profile: data.profile,
-        follower_count: data.follower_count,
-        friend_count: data.friend_count,
+        id: data.id as number,
+        username: data.username as string,
+        firstname: data.firstname as string,
+        lastname: data.lastname as string,
+        bio: data.bio as string,
+        city: data.city as string,
+        state: data.state as string,
+        country: data.country as string,
+        sex: data.sex as string,
+        profile: data.profile as string,
+        follower_count: data.follower_count as number,
+        friend_count: data.friend_count as number,
       };
     } catch (error) {
       console.error("Error fetching Strava profile:", error);
@@ -69,27 +69,23 @@ export class StravaClient {
         `/athlete/activities?per_page=${limit}`,
       );
 
-      if (!Array.isArray(data)) {
-        return [];
-      }
-
-      return data.map((activity: any) => ({
-        id: activity.id,
-        name: activity.name,
-        distance: activity.distance,
-        moving_time: activity.moving_time,
-        elapsed_time: activity.elapsed_time,
-        total_elevation_gain: activity.total_elevation_gain,
-        type: activity.type,
-        sport_type: activity.sport_type,
-        start_date: activity.start_date,
-        start_date_local: activity.start_date_local,
-        timezone: activity.timezone,
-        location_city: activity.location_city,
-        location_state: activity.location_state,
-        location_country: activity.location_country,
-        average_speed: activity.average_speed,
-        max_speed: activity.max_speed,
+      return (data as Record<string, unknown>[]).map((activity) => ({
+        id: activity.id as number,
+        name: activity.name as string,
+        distance: activity.distance as number,
+        moving_time: activity.moving_time as number,
+        elapsed_time: activity.elapsed_time as number,
+        total_elevation_gain: activity.total_elevation_gain as number,
+        type: activity.type as string,
+        sport_type: activity.sport_type as string,
+        start_date: activity.start_date as string,
+        start_date_local: activity.start_date_local as string,
+        timezone: activity.timezone as string,
+        location_city: activity.location_city as string,
+        location_state: activity.location_state as string,
+        location_country: activity.location_country as string,
+        average_speed: activity.average_speed as number,
+        max_speed: activity.max_speed as number,
       }));
     } catch (error) {
       console.error("Error fetching recent Strava activities:", error);

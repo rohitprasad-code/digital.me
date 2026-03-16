@@ -8,7 +8,7 @@ import { VECTOR_DIR } from "@/utils/paths";
 export interface Document {
   id: string;
   content: string;
-  metadata: Record<string, any>;
+  metadata: Record<string, unknown>;
   embedding?: number[];
 }
 
@@ -31,7 +31,7 @@ export class VectorStore {
   async addDocumentWithEmbedding(
     content: string,
     embedding: number[],
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
   ): Promise<Document> {
     const doc: Document = {
       id: uuidv4(),
@@ -47,7 +47,7 @@ export class VectorStore {
 
   async addDocument(
     content: string,
-    metadata: Record<string, any> = {},
+    metadata: Record<string, unknown> = {},
   ): Promise<Document> {
     const embeddingProvider = getEmbeddingProvider();
     const embedding = await embeddingProvider.embed(content);
@@ -101,8 +101,8 @@ export class VectorStore {
       const data = await fs.readFile(this.storageFile, "utf-8");
       this.documents = JSON.parse(data);
       console.log(`Loaded ${this.documents.length} documents.`);
-    } catch (error: any) {
-      if (error.code === "ENOENT") {
+    } catch (error: unknown) {
+      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
         console.log("Vector store file not found, starting empty.");
         this.documents = [];
       } else {

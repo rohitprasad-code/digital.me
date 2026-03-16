@@ -1,5 +1,4 @@
 import fs from "fs/promises";
-import path from "path";
 
 export async function updateEnvFile(
   envPath: string,
@@ -10,7 +9,7 @@ export async function updateEnvFile(
     content = await fs.readFile(envPath, "utf-8");
   } catch (error) {
     // If file doesn't exist, we'll create it
-    if ((error as any).code !== "ENOENT") {
+    if (error instanceof Error && (error as unknown as Record<string, unknown>).code !== "ENOENT") {
       throw error;
     }
   }

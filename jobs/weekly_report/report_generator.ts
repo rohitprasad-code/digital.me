@@ -23,7 +23,7 @@ export async function generateWeeklyReport(): Promise<string> {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const recentActivity = parsed.activities.filter(
-          (event: any) => new Date(event.created_at) >= sevenDaysAgo,
+          (event: { created_at: string }) => new Date(event.created_at) >= sevenDaysAgo,
         );
         githubData = { recentActivities: recentActivity.length, ...parsed };
       }
@@ -45,7 +45,7 @@ export async function generateWeeklyReport(): Promise<string> {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
         const recentActivities = parsed.activities.filter(
-          (a: any) => new Date(a.start_date) >= sevenDaysAgo,
+          (a: { start_date: string }) => new Date(a.start_date) >= sevenDaysAgo,
         );
         stravaData = {
           recentActivitiesCount: recentActivities.length,
