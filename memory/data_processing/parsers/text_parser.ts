@@ -31,7 +31,7 @@ export class TextParser {
             `Saved extracted structure for ${filename} to ${staticPath}`,
           );
 
-          const metaContent = `Metadata for ${filename}:\nTitle: ${structuredData.title}\nSummary: ${structuredData.summary}\nTopics: ${(structuredData.topics || []).join(", ")}`;
+          const metaContent = `Metadata for ${filename}:\nTitle: ${structuredData.title}\nSummary: ${structuredData.summary}\nTopics: ${structuredData.topics.join(", ")}`;
           await pipeline.syncDocument(
             metaContent,
             {

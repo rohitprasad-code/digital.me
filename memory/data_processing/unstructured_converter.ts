@@ -1,5 +1,17 @@
 import { getLLMProvider } from "../../model/llm/provider";
 
+export interface StructuredData {
+  title: string;
+  summary: string;
+  topics: string[];
+  key_entities: Array<{
+    name: string;
+    type: string;
+    description: string;
+  }>;
+  action_items: string[];
+}
+
 export class UnstructuredConverter {
   /**
    * Converts highly unstructured text into a structured JSON representation
@@ -9,7 +21,7 @@ export class UnstructuredConverter {
   static async extractStructuredData(
     text: string,
     filename: string,
-  ): Promise<Record<string, unknown> | null> {
+  ): Promise<StructuredData | null> {
     console.log(
       `Extracting structured entities for unstructured file: ${filename}`,
     );
