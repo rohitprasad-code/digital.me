@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Container, Grid, Flex, Heading, Text, Box } from "@radix-ui/themes";
+import { Grid, Flex, Heading, Text, Box } from "@radix-ui/themes";
 import { ChatInterface } from "./components/ChatInterface";
 import { ContextSelector, Mode } from "./components/ContextSelector";
 import { IntegrationStatus } from "./components/IntegrationStatus";

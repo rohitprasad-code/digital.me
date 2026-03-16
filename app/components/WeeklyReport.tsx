@@ -7,7 +7,6 @@ import {
   Text,
   Dialog,
   Flex,
-  ScrollArea,
   Tooltip,
   SegmentedControl,
   Box,
@@ -35,7 +34,7 @@ export function WeeklyReport() {
       if (!res.ok) throw new Error("No report");
       const text = await res.text();
       setReportData(text);
-    } catch (err) {
+    } catch {
       setReportData(
         "No reports found for this week yet. Digital-Me is still aggregating activity.",
       );
@@ -148,7 +147,8 @@ export function WeeklyReport() {
                     ) : (
                       <ReactMarkdown
                         components={{
-                          h1: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          h1: ({ ...props }: any) => (
                             <h1
                               style={{
                                 fontSize: "1.5em",
@@ -160,7 +160,8 @@ export function WeeklyReport() {
                               {...props}
                             />
                           ),
-                          h2: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          h2: ({ ...props }: any) => (
                             <h2
                               style={{
                                 fontSize: "1.25em",
@@ -169,11 +170,13 @@ export function WeeklyReport() {
                                 marginBottom: "0.5em",
                                 borderBottom: "1px solid var(--gray-5)",
                                 paddingBottom: "0.25em",
+                                color: "var(--gray-12)",
                               }}
                               {...props}
                             />
                           ),
-                          h3: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          h3: ({ ...props }: any) => (
                             <h3
                               style={{
                                 fontSize: "1.1em",
@@ -184,7 +187,8 @@ export function WeeklyReport() {
                               {...props}
                             />
                           ),
-                          ul: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          ul: ({ ...props }: any) => (
                             <ul
                               style={{
                                 listStyleType: "disc",
@@ -194,7 +198,8 @@ export function WeeklyReport() {
                               {...props}
                             />
                           ),
-                          ol: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          ol: ({ ...props }: any) => (
                             <ol
                               style={{
                                 listStyleType: "decimal",
@@ -204,13 +209,16 @@ export function WeeklyReport() {
                               {...props}
                             />
                           ),
-                          li: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          li: ({ ...props }: any) => (
                             <li style={{ marginBottom: "0.25em" }} {...props} />
                           ),
-                          p: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          p: ({ ...props }: any) => (
                             <p style={{ marginBottom: "1em" }} {...props} />
                           ),
-                          a: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          a: ({ ...props }: any) => (
                             <a
                               style={{
                                 color: "var(--blue-10)",
@@ -219,7 +227,8 @@ export function WeeklyReport() {
                               {...props}
                             />
                           ),
-                          code: ({ node, inline, ...props }: any) =>
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          code: ({ inline, ...props }: any) =>
                             inline ? (
                               <code
                                 style={{
@@ -251,17 +260,18 @@ export function WeeklyReport() {
                                 />
                               </Box>
                             ),
-                          blockquote: ({ node, ...props }) => (
+                          // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                          blockquote: ({ ...props }: any) => (
                             <blockquote
-                              style={{
-                                borderLeft: "3px solid var(--indigo-8)",
-                                paddingLeft: "1em",
-                                color: "var(--gray-11)",
-                                fontStyle: "italic",
-                                margin: "1em 0",
-                              }}
-                              {...props}
-                            />
+                               style={{
+                                 borderLeft: "3px solid var(--indigo-8)",
+                                 paddingLeft: "1em",
+                                 color: "var(--gray-11)",
+                                 fontStyle: "italic",
+                                 margin: "1em 0",
+                               }}
+                               {...props}
+                             />
                           ),
                         }}
                       >

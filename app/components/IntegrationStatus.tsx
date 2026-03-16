@@ -55,7 +55,7 @@ export function IntegrationStatus() {
                   {integration.name}
                 </Text>
               </Flex>
-              {/* @ts-ignore - Radix UI badge color prop typing workaround */}
+              {/* @ts-expect-error - Radix UI badge color prop typing workaround */}
               <Badge color={integration.color} radius="full" variant="soft">
                 {integration.status}
               </Badge>
