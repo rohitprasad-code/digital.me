@@ -7,7 +7,7 @@ import {
   refreshTokens,
   StravaTokens,
 } from "./auth";
-import { captureStravaCode, openBrowser } from "../../cli/strava-oauth-server";
+import { captureStravaCode, openBrowser } from "../../cli/oauth/strava-oauth-server";
 
 const ENV_PATH = path.resolve(process.cwd(), ".env.local");
 const REFRESH_BUFFER_SEC = 300; 

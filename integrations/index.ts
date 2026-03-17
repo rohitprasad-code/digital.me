@@ -1,6 +1,7 @@
 import { EmbeddingPipeline } from "../jobs/embedding_pipeline";
 import { ingestGitHub } from "./github/index";
 import { ingestStrava } from "./strava/index";
+import { ingestLinkedIn } from "./linkedin/index";
 
 export interface Integrator {
   name: string;
@@ -15,5 +16,9 @@ export const integrators: Integrator[] = [
   {
     name: "strava",
     ingest: ingestStrava,
+  },
+  {
+    name: "linkedin",
+    ingest: ingestLinkedIn,
   },
 ];

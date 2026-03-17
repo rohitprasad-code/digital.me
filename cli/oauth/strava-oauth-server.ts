@@ -1,6 +1,6 @@
 import http from "http";
 import { exec } from "child_process";
-import { log } from "../utils/logger";
+import { log } from "../../utils/logger";
 
 const CALLBACK_TIMEOUT_MS = 2 * 60 * 1000; // 2 minutes
 

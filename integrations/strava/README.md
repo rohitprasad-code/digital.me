@@ -15,7 +15,7 @@ CLI ──► Browser opens Strava consent page
 User approves ──► Strava redirects to http://localhost:8000?code=...
                     │
                     ▼
-           Local HTTP server (cli/strava-oauth-server.ts)
+           Local HTTP server (cli/oauth/strava-oauth-server.ts)
            captures the code and shuts down
                     │
                     ▼

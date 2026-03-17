@@ -6,8 +6,7 @@ import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
 import { getLLMProvider } from "../../../model/llm/provider";
 import { processDocument } from "../index";
 
-// @ts-expect-error - pdf-parse lacks proper types
-import pdf from "pdf-parse";
+import { PDFParse } from "pdf-parse";
 
 export interface ResumeData {
   education?: { institution: string; degree: string; year: string }[];
@@ -83,7 +82,8 @@ export class PdfParser {
       const filename = path.basename(filePath);
       const buffer = await fs.readFile(filePath);
       
-      const data = await pdf(buffer);
+      const parser = new PDFParse({ data: buffer });
+      const data = await parser.getText();
       const text = data.text;
 
       const structuredData = await this.extractStructuredData(text);

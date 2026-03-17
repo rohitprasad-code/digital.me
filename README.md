@@ -100,6 +100,10 @@ GITHUB_USERNAME=your_github_username
 # Strava integration
 STRAVA_ACCESS_TOKEN=your_strava_token
 
+# LinkedIn integration
+LINKEDIN_CLIENT_ID=your_linkedin_id
+LINKEDIN_CLIENT_SECRET=your_linkedin_secret
+
 # Optional: Override API URL
 # e.g.:
 # DIGITAL_ME_API_URL=http://localhost:7001/api
@@ -143,7 +147,7 @@ npm run cli chat
 
 ## 🔮 Roadmap
 
-- [ ] **More Integrations** — LinkedIn, Instagram, Google Fit
+- [x] **More Integrations** — LinkedIn, Instagram, Google Fit
 - [ ] **Dynamic Modes** — Intent-based persona switching (Recruiter vs. Friend mode)
 - [ ] **Rich Responses** — Serve visual UI components (GitHub stats, heatmaps, activity charts)
 - [ ] **Hardware Integration** — ESP32 sensors for live status, room presence & ambient interaction
