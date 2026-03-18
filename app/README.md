@@ -84,6 +84,15 @@ Generates a new weekly report and returns its markdown content.
   Streamed Response
 ```
 
+## 🛠️ Implementation
+
+The API layer is built with **Next.js 15 App Router**, leveraging **Route Handlers** for server-side logic and streaming.
+
+- **Conversation Flow**: Each chat request extracts the last user message, which is then used by the `VectorStore` to perform a cosine similarity search on the latest ingested data.
+- **RAG Orchestration**: The retrieved context is injected into a specialized **System Prompt**, along with the full chat history, and passed to the **LLM Provider** (Ollama).
+- **Token Streaming**: Uses the `ollama.chat` method with `stream: true`. Chunks are sent to the client as they arrive, providing a smooth, real-time typing effect in the CLI or UI.
+- **Report Generation**: The Report API reads pre-processed JSON data from `data/processed/`, filters it by date, and uses the LLM to synthesize a natural language summary.
+
 ## File Structure
 
 | File        | Purpose                                                         |

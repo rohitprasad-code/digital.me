@@ -38,6 +38,15 @@ npm run cli ingest
 4. Fetches Strava data (profile, recent activities)
 5. Chunks, embeds, and indexes everything into the vector store
 
+## 🛠️ Implementation
+
+The CLI is built using **Commander.js** to handle command routing, options, and arguments.
+
+- **Interactive Chat**: Implemented as a recursive `readline` loop in `cli/chat.ts`. It makes a `POST` request to the local Next.js API and processes the response as a **ReadableStream**, updating the console output in real-time.
+- **Ingestion Pipeline**: Orchestrated by `memory/ingest.ts`. Each integration is called sequentially, passing a global `VectorStore` instance for shared indexing.
+- **Environment Management**: Leverages `dotenv` to load secrets from `.env.local`, which are then passed to the API or used directly by integrations during ingestion.
+- **Error Handling**: Uses `process.exit(1)` with descriptive error messages to ensure failures in data fetching are clearly communicated to the user.
+
 ## File Structure
 
 | File       | Purpose                                                                                  |

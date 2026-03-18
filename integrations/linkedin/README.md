@@ -23,7 +23,7 @@ Connects Digital Me to LinkedIn via OAuth 2.0 to fetch your professional profile
     npm run cli linkedin:auth
     ```
 
-## How It Works
+## 🛠️ Implementation
 
 ### OAuth Flow
 LinkedIn uses OAuth 2.0. The CLI starts a local server on port 8080 to capture the authorization code, which is then exchanged for an access token.

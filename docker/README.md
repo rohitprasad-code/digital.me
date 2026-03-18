@@ -11,7 +11,18 @@ This directory contains the necessary files to containerize the Digital Me appli
   ollama pull llama3
   ollama pull nomic-embed-text
   ```
+  ollama pull nomic-embed-text
+  ```
 - **Environment Variables**: A `.env.docker` file in the `docker/` directory. You can use the provided template.
+
+## 🛠️ Implementation
+
+The Docker setup uses a **multi-stage build** process to create a secure, production-ready environment for the Next.js application.
+
+- **Base Image**: Uses `node:18-alpine` for a minimal, lightweight runtime.
+- **Port Mapping**: The Next.js API server runs on port 7001 within the container, which is exposed to the host for interaction by the CLI or browser.
+- **Host Connectivity**: Leverages `host.docker.internal` to allow the containerized application to communicate with a local instance of **Ollama** running outside the Docker environment.
+- **Volume Management**: Persistent data (like vector store indices and reports) are stored in the `/app/data` and `/app/.memory` directories, which are recommended to be mounted as host volumes for persistence across container restarts.
 
 ## Building the Image
 

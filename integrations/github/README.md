@@ -2,7 +2,7 @@
 
 Connects Digital Me to the [GitHub REST API](https://docs.github.com/en/rest) via [Octokit](https://github.com/octokit/rest.js) to fetch your profile, repositories, and recent activity. Data is embedded into the vector store so the LLM can answer questions about your development work.
 
-## How It Works
+## 🛠️ Implementation
 
 ### API Client (`client.ts`)
 

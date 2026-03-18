@@ -28,6 +28,15 @@ Fetches your Strava athlete profile and recent activities via the [Strava API v3
 **Required env vars:** `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`
 _(access/refresh tokens are managed automatically after first OAuth flow)_
 
+## 🛠️ Implementation
+
+The integrations module is designed with a **pluggable architecture**, allowing new data sources to be added easily by following a standard interface.
+
+- **Unified Ingestion**: Each integration follows a standard `ingest` pattern, fetching data from an external API, transforming it into consistent `Document` objects, and passing them to the `VectorStore`.
+- **Incremental Indexing**: Powered by the `EmbeddingPipeline`, each integration checks the hash of its content before embedding, saving significant time and API costs on subsequent runs.
+- **Client Resilience**: Clients (like GitHub or Strava) are implemented with built-in retry logic and automatic token refresh where applicable to ensure reliability in long-running ingestion jobs.
+- **Unified Registry**: All integrations are exported through a central registry in `integrations/index.ts`, which the CLI and scheduler use to discover and run all active data fetchers.
+
 ## File Structure
 
 ```

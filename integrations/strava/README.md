@@ -2,7 +2,7 @@
 
 Connects Digital Me to the [Strava API v3](https://developers.strava.com/docs/reference/) to fetch your athlete profile and recent activities. Data is embedded into the vector store so the LLM can answer questions about your fitness and workouts.
 
-## How It Works
+## 🛠️ Implementation
 
 ### OAuth Flow
 
