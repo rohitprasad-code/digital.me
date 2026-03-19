@@ -65,7 +65,18 @@ export class VectorStore {
     const db = getDb();
     const id = uuidv4();
     const contentHash = (metadata._contentHash as string) || crypto.createHash("sha256").update(content).digest("hex");
-    const filePath = (metadata.filePath as string) || (metadata.path as string) || "unknown";
+    
+    let filePath = "unknown";
+    const source = metadata.source as string;
+    if (source) {
+      if (["github", "linkedin", "strava"].includes(source.toLowerCase())) {
+        filePath = `api://${source.toLowerCase()}/${metadata.type || "data"}`;
+      } else {
+        filePath = `file://${source}`;
+      }
+    } else {
+      filePath = (metadata.filePath as string) || (metadata.path as string) || "unknown";
+    }
 
     try {
       await db`
