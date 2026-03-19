@@ -15,16 +15,18 @@ let sql: postgres.Sql;
 function getDb() {
   if (!sql) {
     if (!process.env.DATABASE_URL) {
-      console.warn("WARNING: DATABASE_URL is not set. VectorStore requires Neon Postgres to function.");
+      console.warn(
+        "WARNING: DATABASE_URL is not set. VectorStore requires Neon Postgres to function.",
+      );
     }
-    const dbUrl = (process.env.DATABASE_URL || "").replace(/^['"]|['"]$/g, '');
+    const dbUrl = (process.env.DATABASE_URL || "").replace(/^['"]|['"]$/g, "");
     sql = postgres(dbUrl, { ssl: "require" });
   }
   return sql;
 }
 
 export class VectorStore {
-  constructor(storageFile?: string) {
+  constructor() {
     // Ignored as we now use Neon Postgres securely
   }
 
@@ -43,8 +45,10 @@ export class VectorStore {
     }
   }
 
-  setDocuments(docs: Document[]) {
-    console.warn("setDocuments is deprecated for Neon Postgres. Use deleteDocuments or addDocument instead.");
+  setDocuments() {
+    console.warn(
+      "setDocuments is deprecated for Neon Postgres. Use deleteDocuments or addDocument instead.",
+    );
   }
 
   async deleteDocuments(ids: string[]): Promise<void> {
@@ -64,8 +68,10 @@ export class VectorStore {
   ): Promise<Document> {
     const db = getDb();
     const id = uuidv4();
-    const contentHash = (metadata._contentHash as string) || crypto.createHash("sha256").update(content).digest("hex");
-    
+    const contentHash =
+      (metadata._contentHash as string) ||
+      crypto.createHash("sha256").update(content).digest("hex");
+
     let filePath = "unknown";
     const source = metadata.source as string;
     if (source) {
@@ -75,13 +81,14 @@ export class VectorStore {
         filePath = `file://${source}`;
       }
     } else {
-      filePath = (metadata.filePath as string) || (metadata.path as string) || "unknown";
+      filePath =
+        (metadata.filePath as string) || (metadata.path as string) || "unknown";
     }
 
     try {
       await db`
         INSERT INTO document_chunks (id, file_path, content, content_hash, metadata, embedding)
-        VALUES (${id}, ${filePath}, ${content}, ${contentHash}, ${db.json(metadata as any)}, ${JSON.stringify(embedding)}::vector)
+        VALUES (${id}, ${filePath}, ${content}, ${contentHash}, ${JSON.stringify(metadata)}::jsonb, ${JSON.stringify(embedding)}::vector)
         ON CONFLICT (content_hash) DO NOTHING
       `;
     } catch (error) {
