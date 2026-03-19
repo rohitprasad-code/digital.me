@@ -61,6 +61,21 @@ export class VectorStore {
     }
   }
 
+  async deleteStaleDocuments(daysStale: number, providerName: string): Promise<number> {
+    const db = getDb();
+    try {
+      const result = await db`
+        DELETE FROM document_chunks 
+        WHERE last_updated_at < NOW() - (${daysStale} * INTERVAL '1 day')
+        RETURNING id
+      `;
+      return result.length;
+    } catch (e) {
+      console.error("Failed to delete stale documents:", e);
+      return 0;
+    }
+  }
+
   async addDocumentWithEmbedding(
     content: string,
     embedding: number[],
@@ -71,6 +86,8 @@ export class VectorStore {
     const contentHash =
       (metadata._contentHash as string) ||
       crypto.createHash("sha256").update(content).digest("hex");
+    
+    metadata._contentHash = contentHash;
 
     let filePath = "unknown";
     const source = metadata.source as string;
@@ -87,9 +104,10 @@ export class VectorStore {
 
     try {
       await db`
-        INSERT INTO document_chunks (id, file_path, content, content_hash, metadata, embedding)
-        VALUES (${id}, ${filePath}, ${content}, ${contentHash}, ${JSON.stringify(metadata)}::jsonb, ${JSON.stringify(embedding)}::vector)
-        ON CONFLICT (content_hash) DO NOTHING
+        INSERT INTO document_chunks (id, file_path, content, metadata, embedding)
+        VALUES (${id}, ${filePath}, ${content}, ${JSON.stringify(metadata)}::jsonb, ${JSON.stringify(embedding)}::vector)
+        ON CONFLICT ((metadata->>'_contentHash')) 
+        DO UPDATE SET last_updated_at = NOW()
       `;
     } catch (error) {
       console.error("Failed to insert document into Neon:", error);
@@ -156,12 +174,13 @@ export class VectorStore {
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           file_path TEXT NOT NULL DEFAULT 'unknown',
           content TEXT NOT NULL,
-          content_hash TEXT NOT NULL UNIQUE,
           metadata JSONB NOT NULL DEFAULT '{}',
-          embedding VECTOR(768)
+          embedding VECTOR(768),
+          last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
       `;
       // Safely create indexes
+      await db`CREATE UNIQUE INDEX IF NOT EXISTS document_chunks_content_hash_idx ON document_chunks ((metadata->>'_contentHash'));`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops);`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_metadata_idx ON document_chunks USING GIN (metadata);`;
       console.log("Vector store successfully initialized.");

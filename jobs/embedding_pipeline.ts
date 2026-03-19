@@ -6,12 +6,12 @@ import { log } from "../utils/logger";
 export class EmbeddingPipeline {
   private vectorStore: VectorStore;
   private currentProvider: string;
-  private seenDocumentIds: Set<string>;
+  private seenContentHashes: Set<string>;
 
   constructor(vectorStore: VectorStore) {
     this.vectorStore = vectorStore;
     this.currentProvider = (process.env.LLM_PROVIDER || "ollama").toLowerCase();
-    this.seenDocumentIds = new Set<string>();
+    this.seenContentHashes = new Set<string>();
   }
 
   /**
@@ -50,13 +50,15 @@ export class EmbeddingPipeline {
       (doc) => doc.metadata?._contentHash === contentHash,
     );
 
+    // Regardless of whether it existed or is new, mark the hash as seen.
+    this.seenContentHashes.add(contentHash);
+
     if (
       existingDoc &&
       existingDoc.embedding &&
       existingDoc.embedding.length > 0
     ) {
       // It's a perfect match, no need to re-embed!
-      this.seenDocumentIds.add(existingDoc.id);
       return existingDoc;
     }
 
@@ -70,7 +72,6 @@ export class EmbeddingPipeline {
         embedding,
         enrichedMetadata,
       );
-      this.seenDocumentIds.add(newDoc.id);
       return newDoc;
     } catch (error) {
       log.error(
@@ -82,30 +83,15 @@ export class EmbeddingPipeline {
   }
 
   /**
-   * Cleans up any old documents that are no longer present in the physical files
-   * Needs to be called at the very end of an ingestion run.
+   * Cleans up any old documents that are no longer actively accessed or updated.
+   * This uses the natively updating `last_updated_at` column driven by the Postgres ON CONFLICT strategy.
    */
-  async cleanupStaleDocuments(): Promise<number> {
-    const allDocs = await this.vectorStore.getAllDocuments();
-    const staleDocIds: string[] = [];
-
-    // Identify documents we didn't see in this run, OR documents embedded by an old provider
-    for (const doc of allDocs) {
-      const isSeen = this.seenDocumentIds.has(doc.id);
-      const isCorrectProvider =
-        doc.metadata?._embeddedBy === this.currentProvider;
-
-      if (!isSeen || !isCorrectProvider) {
-        staleDocIds.push(doc.id);
-      }
+  async cleanupStaleDocuments(daysStale: number = 7): Promise<number> {
+    const removedCount = await this.vectorStore.deleteStaleDocuments(daysStale, this.currentProvider);
+    
+    if (removedCount > 0) {
+      log.info(`Cleaned up ${removedCount} stale/outdated embedded documents from Postgres.`);
     }
-
-    if (staleDocIds.length > 0) {
-      log.info(`Cleaning up ${staleDocIds.length} stale/outdated embedded documents from Postgres.`);
-      await this.vectorStore.deleteDocuments(staleDocIds);
-    }
-
-    const removedCount = staleDocIds.length;
 
     return removedCount;
   }
