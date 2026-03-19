@@ -64,7 +64,7 @@ async function ingest() {
   }
 
   // Final step: clean up any old documents that weren't synced today
-  await pipeline.cleanupStaleDocuments();
+  // await pipeline.cleanupStaleDocuments();
 
   log.info("Ingestion complete!");
 }

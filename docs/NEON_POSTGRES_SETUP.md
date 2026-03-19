@@ -39,21 +39,23 @@ CREATE TABLE document_chunks (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     
     -- File or Document Source
-    file_path TEXT NOT NULL,
+    file_path TEXT NOT NULL DEFAULT 'unknown',
     
     -- Content Details
     content TEXT NOT NULL,
-    content_hash TEXT NOT NULL, -- SHA-256 hash to prevent duplicate inserts
     
     -- Metadata (for hybrid filtering, e.g. document_type, dates, summaries)
     metadata JSONB NOT NULL DEFAULT '{}',
     
-    -- Vector Embeddings (1536 dimensions for OpenAI's text-embedding-3-small)
-    embedding VECTOR(1536),
+    -- Vector Embeddings (768 dimensions for Ollama nomic-embed-text)
+    embedding VECTOR(768),
     
-    -- 3. Unique Constraint to enforce deduplication
-    CONSTRAINT unique_content_hash UNIQUE (content_hash)
+    -- Freshness tracking for stale chunk garbage collection
+    last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
 );
+
+-- 3. Unique Expression Index to enforce deduplication dynamically from the JSONB
+CREATE UNIQUE INDEX document_chunks_content_hash_idx ON document_chunks ((metadata->>'_contentHash'));
 
 -- 4. Index for fast vector similarity search (HNSW index)
 CREATE INDEX ON document_chunks USING hnsw (embedding vector_cosine_ops);
@@ -79,6 +81,9 @@ interface DocumentInsertPayload {
 export async function addDocumentWithDeduplication(doc: DocumentInsertPayload) {
   // 1. Generate a SHA-256 hash of the content string
   const contentHash = crypto.createHash('sha256').update(doc.content).digest('hex');
+  
+  // Inject the hash into the metadata so Postgres can index it natively
+  doc.metadata._contentHash = contentHash;
 
   // 2. Insert into Neon Postgres with ON CONFLICT resolution
   try {
@@ -86,18 +91,17 @@ export async function addDocumentWithDeduplication(doc: DocumentInsertPayload) {
       INSERT INTO document_chunks (
         file_path, 
         content, 
-        content_hash, 
         metadata, 
         embedding
       )
       VALUES (
         ${doc.filePath}, 
         ${doc.content}, 
-        ${contentHash}, 
-        ${doc.metadata}, 
-        ${doc.embedding}
+        ${JSON.stringify(doc.metadata)}::jsonb, 
+        ${JSON.stringify(doc.embedding)}::vector
       )
-      ON CONFLICT (content_hash) DO NOTHING;
+      ON CONFLICT ((metadata->>'_contentHash')) 
+      DO UPDATE SET last_updated_at = NOW();
     `;
     console.log('Chunk added (or ignored if duplicate hash found).');
   } catch (error) {
@@ -120,14 +124,14 @@ export async function hybridSearch(queryEmbedding: number[], filterType: string,
         file_path, 
         content, 
         metadata,
-        1 - (embedding <=> ${queryEmbedding}) AS similarity_score
+        1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS similarity_score
     FROM document_chunks
     WHERE 
         -- Relational Metadata Filtering -> filter inside the JSONB structure
         metadata->>'document_type' = ${filterType}
     ORDER BY 
         -- Vector Cosine Distance
-        embedding <=> ${queryEmbedding}
+        embedding <=> ${JSON.stringify(queryEmbedding)}::vector
     LIMIT ${limit};
   `;
   
