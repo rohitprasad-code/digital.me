@@ -1,105 +1,131 @@
 # Docker Setup for Digital Me
 
-This directory contains the necessary files to containerize the Digital Me application while connecting to a local Ollama instance running on your host machine.
+Run the full Digital Me stack in a container using **Groq** as the LLM provider — no local model downloads needed.
 
 ## Prerequisites
 
-- **Docker Desktop**: Installed and running on your Mac.
-- **Ollama**: Installed and running on your Mac.
-- **Ollama Models**: Ensure you have pulled the required models locally:
-  ```bash
-  ollama pull llama3
-  ollama pull nomic-embed-text
-  ```
-  ollama pull nomic-embed-text
-  ```
-- **Environment Variables**: A `.env.docker` file in the `docker/` directory. You can use the provided template.
+- **Docker Desktop** installed and running
+- **Groq API Key** — get one from [console.groq.com/keys](https://console.groq.com/keys)
 
-## 🛠️ Implementation
+## Step-by-Step Setup
 
-The Docker setup uses a **multi-stage build** process to create a secure, production-ready environment for the Next.js application.
+### Step 1 — Configure environment variables
 
-- **Base Image**: Uses `node:18-alpine` for a minimal, lightweight runtime.
-- **Port Mapping**: The Next.js API server runs on port 7001 within the container, which is exposed to the host for interaction by the CLI or browser.
-- **Host Connectivity**: Leverages `host.docker.internal` to allow the containerized application to communicate with a local instance of **Ollama** running outside the Docker environment.
-- **Volume Management**: Persistent data (like vector store indices and reports) are stored in the `/app/data` and `/app/.memory` directories, which are recommended to be mounted as host volumes for persistence across container restarts.
-
-## Building the Image
-
-To build the image locally:
+Open `docker/.env.docker` and fill in your API keys:
 
 ```bash
-cd docker
-docker build -f docker/Dockerfile -t debugger612/digital-me:latest .
+# Required
+GROQ_API_KEY=your_groq_api_key_here
+
+# Optional integrations
+GITHUB_USERNAME=your_github_username
+GITHUB_TOKEN=your_github_token
+STRAVA_ACCESS_TOKEN=your_strava_token
+# ... see .env.docker for all options
 ```
 
-Alternatively, using Docker Compose:
+### Step 2 — Build and start the container
 
 ```bash
-cd docker
-docker compose build
+docker compose -f docker/docker-compose.yml up -d --build
 ```
 
-## Running the Container Locally
+> First build takes ~45 seconds. Subsequent builds are cached and near-instant.
 
-### Using Docker Compose (Recommended)
-
-Docker Compose handles port mapping, environment variables, and volume mounting for data persistence.
+### Step 3 — Verify it's running
 
 ```bash
-cd docker
-docker compose up -d
+docker ps
 ```
 
-### Using Docker Run
+You should see:
+```
+NAMES        STATUS         PORTS
+digital-me   Up (healthy)   0.0.0.0:7001->7001/tcp
+```
 
-If you prefer to use `docker run`, ensure you pass the environment file:
+### Step 4 — Open the app
+
+Open **http://localhost:7001** in your browser.
+
+### Step 5 — Use the CLI (optional)
 
 ```bash
-docker run --env-file docker/.env.docker -p 7001:7001 --name digital-me debugger612/digital-me:latest
+# Ingest your data
+docker exec -it digital-me npm run cli ingest
+
+# Chat with the AI
+docker exec -it digital-me npm run cli chat
 ```
 
-## Monitoring and Cleanup
+## Architecture
 
-- **View Logs**:
-  ```bash
-  docker logs -f digital-me
-  ```
-- **Stop Container**:
-  ```bash
-  docker stop digital-me
-  ```
-- **Remove Container**:
-  ```bash
-  docker rm -f digital-me
-  ```
-- **Stop Compose Services**:
-  ```bash
-  docker compose down
-  ```
+```
+┌──────────────────────────────────────────┐
+│           docker compose                  │
+│                                           │
+│  ┌──────────────────────────────────┐    │
+│  │  app (digital-me)                │    │
+│  │  Next.js + CLI + Groq Cloud API  │    │
+│  │  :7001                           │    │
+│  └──────────┬───────────────────────┘    │
+│             │                             │
+│        ┌────▼─────┐                      │
+│        │ data/    │ (volume mount)       │
+│        │ memory/  │                      │
+│        │ .logs/   │                      │
+│        └──────────┘                      │
+└──────────────────────────────────────────┘
+```
 
-## Publishing to Docker Hub
+## Services
 
-1. **Login**:
-   ```bash
-   docker login
-   ```
-2. **Tag the Image**:
-   ```bash
-   docker tag digital-me:latest debugger612/digital-me:latest
-   ```
-3. **Push the Image**:
-   ```bash
-   docker push debugger612/digital-me:latest
-   ```
+| Service | Container | Port | Description |
+|---------|-----------|------|-------------|
+| `app` | `digital-me` | 7001 | Next.js web UI + API + CLI |
+| `scheduler` | `digital-me-scheduler` | — | Cron jobs (opt-in, see below) |
 
-## Running the Published Image
+## Volume Mounts
 
-To run the latest image from Docker Hub:
+| Host Path | Container Path | Purpose |
+|-----------|---------------|---------|
+| `data/` | `/digital-me/data` | Vector store, processed data, reports |
+| `memory/` | `/digital-me/memory` | Memory layer (static, dynamic, episodic) |
+| `.logs/` | `/digital-me/.logs` | Application logs |
+
+## Scheduler (optional)
+
+Start the scheduler alongside the app:
 
 ```bash
-docker run -d -p 7001:7001 --name digital-me debugger612/digital-me:latest
+docker compose -f docker/docker-compose.yml --profile scheduler up -d
 ```
 
-> [!IMPORTANT]
-> When running the published image, ensure your `.env.local` contains `OLLAMA_HOST=http://host.docker.internal:11434` to correctly point to your host's Ollama instance.
+## Useful Commands
+
+```bash
+# View logs
+docker compose -f docker/docker-compose.yml logs -f
+
+# View app logs only
+docker compose -f docker/docker-compose.yml logs -f app
+
+# Stop everything
+docker compose -f docker/docker-compose.yml down
+
+# Rebuild after code changes
+docker compose -f docker/docker-compose.yml up -d --build
+
+# Check container health
+docker compose -f docker/docker-compose.yml ps
+```
+
+## Troubleshooting
+
+| Problem | Fix |
+|---------|-----|
+| `model does not exist` error in logs | Ensure `GROQ_CHAT_MODEL=llama-3.1-8b-instant` and `GROQ_EMBEDDING_MODEL=nomic-embed-text-v1_5` in `.env.docker` |
+| App unreachable on localhost:7001 | Run `docker ps` — container may have exited. Check `docker logs digital-me` |
+| Build fails on M-series Mac | Ensure Docker Desktop is updated and Rosetta is enabled |
+| Port 7001 already in use | Stop any local dev server: `npm run dev` or similar |
+| CLI chat times out | The CLI connects to the API inside the container — ensure the container is running first |

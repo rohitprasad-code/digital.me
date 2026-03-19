@@ -63,7 +63,7 @@ STRAVA_ACCESS_TOKEN=your_strava_token
 # GEMINI_MODEL=gemini-2.0-flash
 
 # Optional: Override API URL
-# DIGITAL_ME_API_URL=http://localhost:7000/api
+# DIGITAL_ME_API_URL=http://localhost:7001/api
 EOT
         echo -e "${GREEN}Created .env.local template.${NC}"
     else
@@ -185,7 +185,7 @@ setup_docker() {
     echo -e "  2. Place your resume PDF at ${BLUE}memory/static/resume.pdf${NC}.\n"
 
     echo -e "${YELLOW}Services running:${NC}"
-    echo -e "  ${GREEN}Next.js API${NC}   →  http://localhost:7000"
+    echo -e "  ${GREEN}Next.js API${NC}   →  http://localhost:7001"
     echo -e "  ${GREEN}Ollama${NC}        →  http://localhost:11434\n"
 
     echo -e "${YELLOW}Useful commands:${NC}"

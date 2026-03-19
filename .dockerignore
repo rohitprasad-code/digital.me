@@ -1,0 +1,46 @@
+# Dependencies
+node_modules
+.pnp
+.pnp.*
+.yarn
+
+# Next.js build output
+.next
+out
+build
+
+# Environment & secrets
+.env*
+
+# Version control
+.git
+.gitignore
+
+# IDEs
+.idea
+.vscode
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+.logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+
+# Tests & coverage
+coverage
+*.test.ts
+
+# Docker (prevent recursive copy)
+docker
+
+# Docs
+docs
+LICENSE
+README.md
+
+# Data files (mounted as volumes at runtime)
+data
