@@ -87,7 +87,7 @@ export class EmbeddingPipeline {
    * This uses the natively updating `last_updated_at` column driven by the Postgres ON CONFLICT strategy.
    */
   async cleanupStaleDocuments(daysStale: number = 7): Promise<number> {
-    const removedCount = await this.vectorStore.deleteStaleDocuments(daysStale, this.currentProvider);
+    const removedCount = await this.vectorStore.deleteStaleDocuments(daysStale);
     
     if (removedCount > 0) {
       log.info(`Cleaned up ${removedCount} stale/outdated embedded documents from Postgres.`);
