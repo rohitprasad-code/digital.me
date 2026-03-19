@@ -38,28 +38,65 @@ This document provides comprehensive instructions on how to run the Digital Me p
 
 ## 2. Docker Execution
 
-If you prefer to run the API component inside an isolated docker container. Note that if using a local Ollama instance, Docker connects via `host.docker.internal`.
+Run the app inside an isolated container using Groq as the cloud LLM provider.
 
 ### Steps
-1. **Prepare Environment File**: Ensure `docker/.env.docker` is correctly setup.
-2. **Run Docker Compose**:
+1. **Configure** `docker/.env.docker` with your API keys (`GROQ_API_KEY` is required).
+2. **Build and start**:
    ```bash
-   cd docker
-   docker-compose up --build -d
+   docker compose -f docker/docker-compose.yml up -d --build
    ```
-   *This starts the `digital-me` image and exposes port 7001 on the host, mounting the `../data` folder for memory persistence.*
-3. **Check Logs**:
+3. **Verify**:
    ```bash
-   docker-compose logs -f app
+   docker ps    # should show digital-me as "Up (healthy)"
    ```
-4. **Stop the Container**:
+4. Open **http://localhost:7001** in your browser.
+5. **CLI** (optional):
    ```bash
-   docker-compose down
+   docker exec -it digital-me npm run cli ingest
+   docker exec -it digital-me npm run cli chat
    ```
+6. **Stop**:
+   ```bash
+   docker compose -f docker/docker-compose.yml down
+   ```
+
+> See [`docker/README.md`](../docker/README.md) for full details, volume mounts, and troubleshooting.
 
 ---
 
-## 3. Termux Setup (Run on Android)
+## 3. Cloudflare Tunnel (public access)
+
+Expose your Docker instance to the internet — no port forwarding or static IP needed.
+
+1. Create a tunnel at [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → **Networks** → **Tunnels**.
+2. Copy the tunnel token into `docker-compose.yml` (under the `tunnel` service).
+3. Add a public hostname in the Cloudflare dashboard:
+   - **Subdomain**: e.g. `digital`
+   - **Domain**: e.g. `rohitprasad.dev`
+   - **Service URL**: `http://app:7001` (use the Docker service name, **not** `localhost`)
+4. Start with the tunnel profile:
+   ```bash
+   docker compose -f docker/docker-compose.yml --profile tunnel up -d
+   ```
+
+Your app is live at `https://digital.yourdomain.dev` 🚀
+
+---
+
+## 4. Replicas (scaling)
+
+Scale the app horizontally:
+
+```bash
+docker compose -f docker/docker-compose.yml up -d --scale app=3
+```
+
+> **Note:** Remove `container_name` and use a port range (e.g. `"7001-7003:7001"`) when scaling. The Cloudflare Tunnel auto-balances across replicas.
+
+---
+
+## 5. Termux Setup (Run on Android)
 
 You can run the full Digital Me backend (API and Ollama) on an Android phone using Termux. 
 
@@ -75,3 +112,4 @@ For full details, please refer to [**TERMUX_SETUP.md**](./TERMUX_SETUP.md).
 7. (Optional) Expose server globally using `cloudflared tunnel --url http://localhost:7001`.
 
 ---
+

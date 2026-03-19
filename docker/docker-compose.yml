@@ -32,3 +32,18 @@ services:
       - ../.logs:/app/.logs
     restart: unless-stopped
     command: ["npx", "ts-node", "-r", "tsconfig-paths/register", "--project", "tsconfig.cli.json", "jobs/scheduler.ts"]
+
+  # ── Cloudflare Tunnel (optional — start with: docker compose --profile tunnel up -d) ─
+  tunnel:
+    image: cloudflare/cloudflared:latest
+    container_name: digital-me-tunnel
+    profiles:
+      - tunnel
+    env_file:
+      - ./.env.docker
+    command: tunnel --no-autoupdate run --token ${CLOUDFLARE_TUNNEL_TOKEN}
+    depends_on:
+      - app
+    restart: unless-stopped
+
+
