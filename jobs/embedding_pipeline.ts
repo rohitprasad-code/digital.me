@@ -43,9 +43,8 @@ export class EmbeddingPipeline {
     };
 
     // Check if we already have this exact document embedded by the current provider
-    const existingProviderDocs = this.vectorStore
-      .getAllDocuments()
-      .filter((doc) => doc.metadata?._embeddedBy === this.currentProvider);
+    const allDocs = await this.vectorStore.getAllDocuments();
+    const existingProviderDocs = allDocs.filter((doc) => doc.metadata?._embeddedBy === this.currentProvider);
 
     const existingDoc = existingProviderDocs.find(
       (doc) => doc.metadata?._contentHash === contentHash,
@@ -87,29 +86,26 @@ export class EmbeddingPipeline {
    * Needs to be called at the very end of an ingestion run.
    */
   async cleanupStaleDocuments(): Promise<number> {
-    const allDocs = this.vectorStore.getAllDocuments();
-    let removedCount = 0;
+    const allDocs = await this.vectorStore.getAllDocuments();
+    const staleDocIds: string[] = [];
 
-    // Filter out documents we didn't see in this run, OR documents embedded by an old provider
-    const activeDocs = allDocs.filter((doc) => {
+    // Identify documents we didn't see in this run, OR documents embedded by an old provider
+    for (const doc of allDocs) {
       const isSeen = this.seenDocumentIds.has(doc.id);
       const isCorrectProvider =
         doc.metadata?._embeddedBy === this.currentProvider;
 
       if (!isSeen || !isCorrectProvider) {
-        removedCount++;
-        return false;
+        staleDocIds.push(doc.id);
       }
-      return true;
-    });
-
-    if (removedCount > 0) {
-      log.info(
-        `Cleaning up ${removedCount} stale/outdated embedded documents.`,
-      );
-      this.vectorStore.setDocuments(activeDocs);
-      await this.vectorStore.save();
     }
+
+    if (staleDocIds.length > 0) {
+      log.info(`Cleaning up ${staleDocIds.length} stale/outdated embedded documents from Postgres.`);
+      await this.vectorStore.deleteDocuments(staleDocIds);
+    }
+
+    const removedCount = staleDocIds.length;
 
     return removedCount;
   }

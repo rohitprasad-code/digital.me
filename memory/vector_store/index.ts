@@ -1,9 +1,7 @@
 import { getEmbeddingProvider } from "@/model/llm/embeddings";
-import computeCosineSimilarity from "compute-cosine-similarity";
 import { v4 as uuidv4 } from "uuid";
-import fs from "fs/promises";
-import path from "path";
-import { VECTOR_DIR } from "@/utils/paths";
+import crypto from "crypto";
+import postgres from "postgres";
 
 export interface Document {
   id: string;
@@ -12,20 +10,51 @@ export interface Document {
   embedding?: number[];
 }
 
-export class VectorStore {
-  private documents: Document[] = [];
-  private readonly storageFile: string;
+let sql: postgres.Sql;
 
-  constructor(storageFile: string = "embedded_vectors.json") {
-    this.storageFile = path.join(VECTOR_DIR, storageFile);
+function getDb() {
+  if (!sql) {
+    if (!process.env.DATABASE_URL) {
+      console.warn("WARNING: DATABASE_URL is not set. VectorStore requires Neon Postgres to function.");
+    }
+    const dbUrl = (process.env.DATABASE_URL || "").replace(/^['"]|['"]$/g, '');
+    sql = postgres(dbUrl, { ssl: "require" });
+  }
+  return sql;
+}
+
+export class VectorStore {
+  constructor(storageFile?: string) {
+    // Ignored as we now use Neon Postgres securely
   }
 
-  getAllDocuments(): Document[] {
-    return this.documents;
+  async getAllDocuments(): Promise<Document[]> {
+    const db = getDb();
+    try {
+      const rows = await db`SELECT id, content, metadata FROM document_chunks`;
+      return rows.map((row) => ({
+        id: row.id,
+        content: row.content,
+        metadata: row.metadata,
+      }));
+    } catch (e) {
+      console.error("Failed to get all documents:", e);
+      return [];
+    }
   }
 
   setDocuments(docs: Document[]) {
-    this.documents = docs;
+    console.warn("setDocuments is deprecated for Neon Postgres. Use deleteDocuments or addDocument instead.");
+  }
+
+  async deleteDocuments(ids: string[]): Promise<void> {
+    if (ids.length === 0) return;
+    const db = getDb();
+    try {
+      await db`DELETE FROM document_chunks WHERE id IN ${db(ids)}`;
+    } catch (e) {
+      console.error("Failed to delete documents:", e);
+    }
   }
 
   async addDocumentWithEmbedding(
@@ -33,16 +62,22 @@ export class VectorStore {
     embedding: number[],
     metadata: Record<string, unknown> = {},
   ): Promise<Document> {
-    const doc: Document = {
-      id: uuidv4(),
-      content,
-      metadata,
-      embedding,
-    };
+    const db = getDb();
+    const id = uuidv4();
+    const contentHash = (metadata._contentHash as string) || crypto.createHash("sha256").update(content).digest("hex");
+    const filePath = (metadata.filePath as string) || (metadata.path as string) || "unknown";
 
-    this.documents.push(doc);
-    await this.save();
-    return doc;
+    try {
+      await db`
+        INSERT INTO document_chunks (id, file_path, content, content_hash, metadata, embedding)
+        VALUES (${id}, ${filePath}, ${content}, ${contentHash}, ${db.json(metadata as any)}, ${JSON.stringify(embedding)}::vector)
+        ON CONFLICT (content_hash) DO NOTHING
+      `;
+    } catch (error) {
+      console.error("Failed to insert document into Neon:", error);
+    }
+
+    return { id, content, metadata, embedding };
   }
 
   async addDocument(
@@ -52,68 +87,78 @@ export class VectorStore {
     const embeddingProvider = getEmbeddingProvider();
     const embedding = await embeddingProvider.embed(content);
 
-    const doc: Document = {
-      id: uuidv4(),
-      content,
-      metadata,
-      embedding,
-    };
-
-    this.documents.push(doc);
-    await this.save();
-    return doc;
+    return this.addDocumentWithEmbedding(content, embedding, metadata);
   }
 
   async search(
     query: string,
     limit: number = 3,
   ): Promise<{ doc: Document; score: number }[]> {
+    const db = getDb();
     const embeddingProvider = getEmbeddingProvider();
     const queryEmbedding = await embeddingProvider.embed(query);
 
-    const scoredDocs = this.documents.map((doc) => {
-      if (!doc.embedding) return { doc, score: -1 };
-      const score =
-        computeCosineSimilarity(queryEmbedding, doc.embedding) || -1;
-      return { doc, score };
-    });
-
-    scoredDocs.sort((a, b) => b.score - a.score);
-
-    return scoredDocs.slice(0, limit);
-  }
-
-  async save(): Promise<void> {
     try {
-      await fs.mkdir(path.dirname(this.storageFile), { recursive: true });
-      await fs.writeFile(
-        this.storageFile,
-        JSON.stringify(this.documents, null, 2),
-      );
+      const rows = await db`
+        SELECT 
+          id, 
+          content, 
+          metadata, 
+          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
+        FROM document_chunks
+        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+        LIMIT ${limit}
+      `;
+
+      return rows.map((row) => ({
+        doc: {
+          id: row.id,
+          content: row.content,
+          metadata: row.metadata,
+        },
+        score: parseFloat(row.score),
+      }));
     } catch (error) {
-      console.error("Failed to save vector store:", error);
+      console.error("Search failed in Neon:", error);
+      return [];
     }
   }
 
+  async save(): Promise<void> {
+    // No-op for Postgres
+  }
+
   async load(): Promise<void> {
+    const db = getDb();
+    console.log("Initializing Neon Postgres Vector Store schemas...");
     try {
-      console.log("Loading vector store from:", this.storageFile);
-      const data = await fs.readFile(this.storageFile, "utf-8");
-      this.documents = JSON.parse(data);
-      console.log(`Loaded ${this.documents.length} documents.`);
-    } catch (error: unknown) {
-      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
-        console.log("Vector store file not found, starting empty.");
-        this.documents = [];
-      } else {
-        console.error("Failed to load vector store:", error);
-        throw error;
-      }
+      await db`CREATE EXTENSION IF NOT EXISTS vector;`;
+      await db`
+        CREATE TABLE IF NOT EXISTS document_chunks (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          file_path TEXT NOT NULL DEFAULT 'unknown',
+          content TEXT NOT NULL,
+          content_hash TEXT NOT NULL UNIQUE,
+          metadata JSONB NOT NULL DEFAULT '{}',
+          embedding VECTOR(768)
+        );
+      `;
+      // Safely create indexes
+      await db`CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops);`;
+      await db`CREATE INDEX IF NOT EXISTS document_chunks_metadata_idx ON document_chunks USING GIN (metadata);`;
+      console.log("Vector store successfully initialized.");
+    } catch (error) {
+      console.error("Failed to initialize database schema:", error);
     }
   }
 
   async clear(): Promise<void> {
-    this.documents = [];
-    await this.save();
+    const db = getDb();
+    try {
+      await db`TRUNCATE TABLE document_chunks;`;
+      console.log("Vector store cleared.");
+    } catch (error) {
+      console.error("Failed to clear vector store:", error);
+    }
   }
 }
