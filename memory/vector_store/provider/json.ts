@@ -5,9 +5,9 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { VECTOR_DIR } from "@/utils/paths";
-import { Document } from "./types";
+import { Document } from "../types";
 
-export class LocalVectorStore {
+export class JsonVectorStore {
   private documents: Document[] = [];
   private readonly storageFile: string;
 
@@ -26,24 +26,26 @@ export class LocalVectorStore {
   async deleteDocuments(ids: string[]): Promise<void> {
     if (ids.length === 0) return;
     const idSet = new Set(ids);
-    this.documents = this.documents.filter(doc => !idSet.has(doc.id));
+    this.documents = this.documents.filter((doc) => !idSet.has(doc.id));
     await this.save();
   }
 
   async deleteStaleDocuments(daysStale: number): Promise<number> {
     const now = Date.now();
     const staleMs = daysStale * 24 * 60 * 60 * 1000;
-    
+
     let removedCount = 0;
-    this.documents = this.documents.filter(doc => {
-      const lastUpdated = parseFloat((doc.metadata?._lastUpdatedAt as string) || "0");
-      if (lastUpdated > 0 && (now - lastUpdated) > staleMs) {
+    this.documents = this.documents.filter((doc) => {
+      const lastUpdatedMs = doc.lastUpdatedAt
+        ? new Date(doc.lastUpdatedAt).getTime()
+        : parseFloat((doc.metadata?._lastUpdatedAt as string) || "0");
+      if (lastUpdatedMs > 0 && now - lastUpdatedMs > staleMs) {
         removedCount++;
         return false; // delete
       }
       return true; // keep
     });
-    
+
     if (removedCount > 0) {
       await this.save();
     }
@@ -58,23 +60,43 @@ export class LocalVectorStore {
     const contentHash =
       (metadata._contentHash as string) ||
       crypto.createHash("sha256").update(content).digest("hex");
-    
+
     metadata._contentHash = contentHash;
-    metadata._lastUpdatedAt = Date.now().toString();
+    const strTimestamp = new Date().toISOString();
+    metadata._lastUpdatedAt = Date.now().toString(); // retain backward compatibility
+
+    let filePath = "unknown";
+    const source = metadata.source as string;
+    if (source) {
+      if (["github", "linkedin", "strava"].includes(source.toLowerCase())) {
+        filePath = `api://${source.toLowerCase()}/${metadata.type || "data"}`;
+      } else {
+        filePath = `file://${source}`;
+      }
+    } else {
+      filePath =
+        (metadata.filePath as string) || (metadata.path as string) || "unknown";
+    }
 
     // Local array deduplication simulating the postgres conflict resolution GC metrics
-    const existingIndex = this.documents.findIndex(d => d.metadata?._contentHash === contentHash);
+    const existingIndex = this.documents.findIndex(
+      (d) => d.metadata?._contentHash === contentHash,
+    );
     if (existingIndex !== -1) {
-      this.documents[existingIndex].metadata._lastUpdatedAt = metadata._lastUpdatedAt;
+      this.documents[existingIndex].lastUpdatedAt = strTimestamp;
+      this.documents[existingIndex].metadata._lastUpdatedAt =
+        metadata._lastUpdatedAt;
       await this.save();
       return this.documents[existingIndex];
     }
 
     const doc: Document = {
       id: uuidv4(),
+      filePath,
       content,
       metadata,
       embedding,
+      lastUpdatedAt: strTimestamp,
     };
 
     this.documents.push(doc);
@@ -128,7 +150,12 @@ export class LocalVectorStore {
       this.documents = JSON.parse(data);
       console.log(`Loaded ${this.documents.length} local JSON documents.`);
     } catch (error: unknown) {
-      if (error && typeof error === "object" && "code" in error && error.code === "ENOENT") {
+      if (
+        error &&
+        typeof error === "object" &&
+        "code" in error &&
+        error.code === "ENOENT"
+      ) {
         console.log("Vector store file not found, starting empty.");
         this.documents = [];
       } else {

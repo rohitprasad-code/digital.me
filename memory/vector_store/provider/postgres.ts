@@ -2,7 +2,7 @@ import { getEmbeddingProvider } from "@/model/llm/embeddings";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 import postgres from "postgres";
-import { Document } from "./types";
+import { Document } from "../types";
 
 let sql: postgres.Sql;
 
@@ -20,11 +20,14 @@ export class PostgresVectorStore {
   async getAllDocuments(): Promise<Document[]> {
     const db = getDb();
     try {
-      const rows = await db`SELECT id, content, metadata FROM document_chunks`;
+      const rows =
+        await db`SELECT id, file_path, content, metadata, last_updated_at FROM document_chunks`;
       return rows.map((row) => ({
         id: row.id,
+        filePath: row.file_path,
         content: row.content,
         metadata: row.metadata,
+        lastUpdatedAt: row.last_updated_at,
       }));
     } catch (e) {
       console.error("Failed to get all documents:", e);
@@ -33,7 +36,9 @@ export class PostgresVectorStore {
   }
 
   setDocuments() {
-    console.warn("setDocuments is deprecated for Neon Postgres. Use deleteDocuments or addDocument instead.");
+    console.warn(
+      "setDocuments is deprecated for Neon Postgres. Use deleteDocuments or addDocument instead.",
+    );
   }
 
   async deleteDocuments(ids: string[]): Promise<void> {
@@ -71,7 +76,7 @@ export class PostgresVectorStore {
     const contentHash =
       (metadata._contentHash as string) ||
       crypto.createHash("sha256").update(content).digest("hex");
-    
+
     metadata._contentHash = contentHash;
 
     let filePath = "unknown";
@@ -98,7 +103,14 @@ export class PostgresVectorStore {
       console.error("Failed to insert document into Neon:", error);
     }
 
-    return { id, content, metadata, embedding };
+    return {
+      id,
+      filePath,
+      content,
+      metadata,
+      embedding,
+      lastUpdatedAt: new Date(),
+    };
   }
 
   async addDocument(
@@ -122,8 +134,10 @@ export class PostgresVectorStore {
       const rows = await db`
         SELECT 
           id, 
+          file_path,
           content, 
           metadata, 
+          last_updated_at,
           1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
         FROM document_chunks
         ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
@@ -133,8 +147,10 @@ export class PostgresVectorStore {
       return rows.map((row) => ({
         doc: {
           id: row.id,
+          filePath: row.file_path,
           content: row.content,
           metadata: row.metadata,
+          lastUpdatedAt: row.last_updated_at,
         },
         score: parseFloat(row.score),
       }));
