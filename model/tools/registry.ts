@@ -13,12 +13,14 @@
 import { ToolDefinition } from "./types";
 import { stravaTools } from "../../integrations/strava/tools";
 import { esp32Tools } from "../../integrations/esp32/tools";
+import { githubTools } from "../../integrations/github/tools";
 
 // ── Aggregate all tool definitions ──────────────────────────────────
 
 const allToolDefinitions: ToolDefinition[] = [
   ...stravaTools,
   ...esp32Tools,
+  ...githubTools,
 ];
 
 // ── TOOL_MAP: name → execute function ───────────────────────────────

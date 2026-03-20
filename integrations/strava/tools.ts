@@ -1,56 +1,14 @@
 /**
- * Strava Tool Functions
+ * Strava Tool Definitions
  *
- * Live API functions the LLM can invoke to fetch fresh data from Strava.
- * These bypass the vector store and hit the Strava API directly.
+ * Thin adapters that expose StravaClient methods as LLM-callable tools.
+ * All actual API logic lives in client.ts — no duplication.
  */
 
 import { ToolDefinition } from "../../model/tools/types";
 import { StravaClient } from "./client";
 
 const strava = new StravaClient();
-
-/**
- * Fetches recent Strava activities live from the API.
- */
-async function getStravaActivities(args: Record<string, unknown>) {
-  const limit = (args.limit as number) || 5;
-  const activities = await strava.getRecentActivities(limit);
-
-  return activities.map((a) => ({
-    name: a.name,
-    type: a.type,
-    sport_type: a.sport_type,
-    date: a.start_date_local,
-    distance_km: (a.distance / 1000).toFixed(2),
-    moving_time_min: Math.floor(a.moving_time / 60),
-    elevation_gain_m: a.total_elevation_gain,
-    avg_speed_kmh: (a.average_speed * 3.6).toFixed(2),
-    location: [a.location_city, a.location_state, a.location_country]
-      .filter(Boolean)
-      .join(", "),
-  }));
-}
-
-/**
- * Fetches the live Strava athlete profile.
- */
-async function getStravaProfile() {
-  const profile = await strava.getProfile();
-  if (!profile) {
-    return { error: "Could not fetch Strava profile. Token may be invalid." };
-  }
-  return {
-    name: `${profile.firstname} ${profile.lastname}`,
-    username: profile.username,
-    location: [profile.city, profile.state, profile.country]
-      .filter(Boolean)
-      .join(", "),
-    bio: profile.bio,
-    followers: profile.follower_count,
-    following: profile.friend_count,
-  };
-}
 
 // ── Tool Definitions ────────────────────────────────────────────────
 
@@ -69,7 +27,10 @@ export const stravaTools: ToolDefinition[] = [
         },
       },
     },
-    execute: getStravaActivities,
+    execute: async (args) => {
+      const limit = (args.limit as number) || 5;
+      return await strava.getRecentActivities(limit);
+    },
   },
   {
     name: "get_strava_profile",
@@ -79,6 +40,8 @@ export const stravaTools: ToolDefinition[] = [
       type: "object",
       properties: {},
     },
-    execute: getStravaProfile,
+    execute: async () => {
+      return await strava.getProfile();
+    },
   },
 ];
