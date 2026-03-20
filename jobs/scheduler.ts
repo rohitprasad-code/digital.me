@@ -2,7 +2,7 @@ import cron from "node-cron";
 import { exec } from "child_process";
 import { log } from "../utils/logger";
 import { loadEnvConfig } from "@next/env";
-import { refreshTokenSilently } from "../integrations/strava/token";
+import { refreshTokenSilently } from "../integrations/strava/auth";
 
 loadEnvConfig(process.cwd());
 

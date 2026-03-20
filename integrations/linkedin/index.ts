@@ -3,7 +3,7 @@ import path from "path";
 import { log } from "../../utils/logger";
 import { DYNAMIC_DIR } from "../../utils/paths";
 import { LinkedInClient } from "./client";
-import { ensureValidToken } from "./token";
+import { ensureValidToken } from "./auth";
 import { EmbeddingPipeline } from "../../jobs/embedding_pipeline";
 
 export async function ingestLinkedIn(pipeline: EmbeddingPipeline) {

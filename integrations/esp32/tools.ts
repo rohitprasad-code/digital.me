@@ -1,67 +1,14 @@
 /**
- * ESP32 / Smart Bulb Tool Functions
+ * ESP32 / Smart Bulb Tool Definitions
  *
- * Controls smart lighting via an ESP32 device.
- * Requires BULB_API_URL environment variable pointing to the ESP32 endpoint.
+ * Thin adapters that expose ESP32Client methods as LLM-callable tools.
+ * All actual API logic lives in client.ts — no duplication.
  */
 
 import { ToolDefinition } from "../../model/tools/types";
+import { ESP32Client } from "./client";
 
-const BULB_API_URL = process.env.BULB_API_URL || "http://192.168.1.100";
-
-/**
- * Turns a smart bulb on or off via the ESP32 API.
- */
-async function setBulbState(args: Record<string, unknown>) {
-  const state = args.state as "on" | "off";
-
-  if (!state || !["on", "off"].includes(state)) {
-    return { error: "Invalid state. Must be 'on' or 'off'." };
-  }
-
-  try {
-    const response = await fetch(`${BULB_API_URL}/set`, {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ state }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      return {
-        success: false,
-        error: `ESP32 responded with ${response.status}: ${errorText}`,
-      };
-    }
-
-    return { success: true, state, message: `Bulb turned ${state}` };
-  } catch (error) {
-    return {
-      success: false,
-      error: `Could not reach ESP32 at ${BULB_API_URL}: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
-}
-
-/**
- * Gets the current state of the smart bulb from the ESP32.
- */
-async function getBulbState() {
-  try {
-    const response = await fetch(`${BULB_API_URL}/state`);
-
-    if (!response.ok) {
-      return { error: `ESP32 responded with ${response.status}` };
-    }
-
-    const data = await response.json();
-    return { state: data.state || "unknown" };
-  } catch (error) {
-    return {
-      error: `Could not reach ESP32 at ${BULB_API_URL}: ${error instanceof Error ? error.message : String(error)}`,
-    };
-  }
-}
+const esp32 = new ESP32Client();
 
 // ── Tool Definitions ────────────────────────────────────────────────
 
@@ -81,7 +28,17 @@ export const esp32Tools: ToolDefinition[] = [
       },
       required: ["state"],
     },
-    execute: setBulbState,
+    execute: async (args) => {
+      const state = args.state as "on" | "off";
+      if (!state || !["on", "off"].includes(state)) {
+        return { error: "Invalid state. Must be 'on' or 'off'." };
+      }
+      try {
+        return await esp32.setBulbState(state);
+      } catch (error) {
+        return { success: false, error: error instanceof Error ? error.message : String(error) };
+      }
+    },
   },
   {
     name: "get_bulb_state",
@@ -91,6 +48,12 @@ export const esp32Tools: ToolDefinition[] = [
       type: "object",
       properties: {},
     },
-    execute: getBulbState,
+    execute: async () => {
+      try {
+        return await esp32.getBulbState();
+      } catch (error) {
+        return { error: error instanceof Error ? error.message : String(error) };
+      }
+    },
   },
 ];

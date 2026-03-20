@@ -8,9 +8,9 @@ import { generateWeeklyReport } from "../jobs/weekly_report";
 import fs from "fs";
 import path from "path";
 import { StravaClient } from "../integrations/strava/client";
-import { ensureValidToken as ensureStravaToken, getTokenStatus as getStravaStatus } from "../integrations/strava/token";
+import { ensureValidToken as ensureStravaToken, getTokenStatus as getStravaStatus } from "../integrations/strava/auth";
 import { LinkedInClient } from "../integrations/linkedin/client";
-import { ensureValidToken as ensureLinkedInToken, getTokenStatus as getLinkedInStatus } from "../integrations/linkedin/token";
+import { ensureValidToken as ensureLinkedInToken, getTokenStatus as getLinkedInStatus } from "../integrations/linkedin/auth";
 
 // Load environment variables from .env* files
 loadEnvConfig(process.cwd());

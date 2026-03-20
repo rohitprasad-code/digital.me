@@ -1,4 +1,22 @@
-import { LinkedInProfile } from "./types";
+export interface LinkedInProfile {
+  sub: string;
+  name: string;
+  given_name: string;
+  family_name: string;
+  picture?: string;
+  locale?: string;
+  email?: string;
+  headline?: string;
+}
+
+export interface LinkedInExperience {
+  companyName: string;
+  title: string;
+  location?: string;
+  startDate?: string;
+  endDate?: string;
+  description?: string;
+}
 
 export class LinkedInClient {
   private accessToken: string;

@@ -1,4 +1,4 @@
-import { ensureValidToken, forceRefresh } from "./token";
+import { ensureValidToken, forceRefresh } from "./auth";
 
 export class StravaClient {
   private accessToken: string | null = null;

@@ -1,6 +1,30 @@
 # Integrations
 
-The `integrations/` module contains connectors for external services. Each integration fetches data from a third-party API, formats it into embeddable text chunks, and stores them in the vector store during ingestion.
+The `integrations/` module contains connectors for external services. Each integration follows a **standardized 4-file convention** and serves two purposes:
+
+1. **Ingestion** — batch-fetches data and stores it in the vector store for RAG
+2. **Tool Calling** — exposes live API methods as tools the AI agent can invoke at runtime
+
+## File Convention
+
+Every integration directory follows this structure (create only the files the service needs):
+
+```
+integrations/<service>/
+├── auth.ts       # OAuth lifecycle — authorization, token exchange, refresh, persistence
+├── client.ts     # API client class — all reusable methods for the service
+├── tools.ts      # LLM tool definitions — thin adapters that call client.ts methods
+└── index.ts      # Ingestion pipeline — batch-fetch data → format → store in vector DB
+```
+
+| File | Responsibility | Triggered By |
+|------|---------------|-------------|
+| `auth.ts` | OAuth flows, token exchange, refresh, `.env.local` persistence | `client.ts`, CLI commands |
+| `client.ts` | HTTP calls to the external API, response parsing | `tools.ts`, `index.ts` |
+| `tools.ts` | Tool schema (name, description, parameters) + `execute` wrappers | AI agent (via `model/tools/registry.ts`) |
+| `index.ts` | Fetch → format → embed via `EmbeddingPipeline` | CLI `sync` command, scheduler |
+
+> **Key rule:** `tools.ts` should never duplicate API logic — each `execute` function is a one-liner calling a `client.ts` method.
 
 ## Available Integrations
 
@@ -16,6 +40,8 @@ Fetches your GitHub profile, recent repositories, and public activity via the [O
 
 **Required env vars:** `GITHUB_TOKEN`, `GITHUB_USERNAME`
 
+**Tools:** `get_github_profile`, `get_github_repos`, `get_github_activity`
+
 ### Strava
 
 Fetches your Strava athlete profile and recent activities via the [Strava API v3](https://developers.strava.com/docs/reference/).
@@ -28,40 +54,89 @@ Fetches your Strava athlete profile and recent activities via the [Strava API v3
 **Required env vars:** `STRAVA_CLIENT_ID`, `STRAVA_CLIENT_SECRET`
 _(access/refresh tokens are managed automatically after first OAuth flow)_
 
-## 🛠️ Implementation
+**Tools:** `get_strava_activities`, `get_strava_profile`
 
-The integrations module is designed with a **pluggable architecture**, allowing new data sources to be added easily by following a standard interface.
+### LinkedIn
 
-- **Unified Ingestion**: Each integration follows a standard `ingest` pattern, fetching data from an external API, transforming it into consistent `Document` objects, and passing them to the `VectorStore`.
-- **Incremental Indexing**: Powered by the `EmbeddingPipeline`, each integration checks the hash of its content before embedding, saving significant time and API costs on subsequent runs.
-- **Client Resilience**: Clients (like GitHub or Strava) are implemented with built-in retry logic and automatic token refresh where applicable to ensure reliability in long-running ingestion jobs.
-- **Unified Registry**: All integrations are exported through a central registry in `integrations/index.ts`, which the CLI and scheduler use to discover and run all active data fetchers.
+Fetches your LinkedIn profile via the [LinkedIn OpenID Connect API](https://learn.microsoft.com/en-us/linkedin/consumer/integrations/self-serve/sign-in-with-linkedin-v2).
+
+| Data    | Description                            |
+| ------- | -------------------------------------- |
+| Profile | Name, email, headline, profile picture |
+
+**Required env vars:** `LINKEDIN_CLIENT_ID`, `LINKEDIN_CLIENT_SECRET`
+_(access token managed automatically after first OAuth flow)_
+
+**Tools:** `get_linkedin_profile`
+
+### ESP32 (Smart Bulb)
+
+Controls smart lighting via an ESP32 microcontroller over HTTP.
+
+| Action    | Description                          |
+| --------- | ------------------------------------ |
+| Set State | Turn the bulb on or off              |
+| Get State | Check if the bulb is currently on/off |
+
+**Required env vars:** `BULB_API_URL` (defaults to `http://192.168.1.100`)
+
+**Tools:** `set_bulb_state`, `get_bulb_state`
 
 ## File Structure
 
 ```
 integrations/
-├── index.ts              # Registry — exports all integrators
+├── index.ts                  # Registry — exports all integrators for ingestion
+├── README.md
 ├── github/
-│   ├── client.ts         # GitHubClient (Octokit wrapper)
-│   └── index.ts          # ingestGitHub() — fetches & stores data
-└── strava/
-    ├── auth.ts           # OAuth URL builder + token exchange
-    ├── client.ts         # StravaClient (REST client with 401 retry)
-    ├── index.ts          # ingestStrava() — fetches & stores data
-    └── token.ts          # Token lifecycle — ensure, refresh, save
+│   ├── client.ts             # GitHubClient (Octokit wrapper)
+│   ├── tools.ts              # LLM tools: profile, repos, activity
+│   └── index.ts              # ingestGitHub() — fetch & store data
+├── strava/
+│   ├── auth.ts               # OAuth + token lifecycle (exchange, refresh, save)
+│   ├── client.ts             # StravaClient (REST client with 401 retry)
+│   ├── tools.ts              # LLM tools: activities, profile
+│   └── index.ts              # ingestStrava() — fetch & store data
+├── linkedin/
+│   ├── auth.ts               # OAuth + token lifecycle
+│   ├── client.ts             # LinkedInClient (OpenID Connect)
+│   ├── tools.ts              # LLM tools: profile
+│   └── index.ts              # ingestLinkedIn() — fetch & store data
+├── esp32/
+│   ├── client.ts             # ESP32Client (HTTP control)
+│   └── tools.ts              # LLM tools: set/get bulb state
+├── instagram/                # (planned)
+└── leetcode/                 # (planned)
 ```
 
 ## Adding a New Integration
 
-1. Create a new folder: `integrations/<service>/`
-2. Add a `client.ts` with the API client class
-3. Add an `index.ts` exporting an `ingest<Service>(vectorStore)` function
-4. Register it in `integrations/index.ts`:
+1. **Create the directory:** `integrations/<service>/`
+2. **Add `client.ts`** with an API client class containing reusable methods
+3. **Add `auth.ts`** if the service requires OAuth (token exchange, refresh, persistence)
+4. **Add `tools.ts`** with tool definitions for the AI agent:
+   ```typescript
+   import { ToolDefinition } from "../../model/tools/types";
+   import { MyClient } from "./client";
 
-```typescript
-import { ingestNewService } from "./new-service/index";
+   const client = new MyClient();
 
-// Add to the integrators array:
-{ name: "new-service", ingest: ingestNewService }
-```
+   export const myTools: ToolDefinition[] = [
+     {
+       name: "get_my_data",
+       description: "Fetches data from MyService. Use when the user asks about...",
+       parameters: { type: "object", properties: {} },
+       execute: async () => await client.getData(),
+     },
+   ];
+   ```
+5. **Register tools** in `model/tools/registry.ts`:
+   ```typescript
+   import { myTools } from "../../integrations/my-service/tools";
+   // Add to allToolDefinitions: ...myTools,
+   ```
+6. **Add `index.ts`** for ingestion (if the service has data to embed):
+   ```typescript
+   import { ingestMyService } from "./my-service/index";
+   // Add to integrators array in integrations/index.ts
+   ```
