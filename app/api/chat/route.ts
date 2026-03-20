@@ -7,6 +7,7 @@ import {
 } from "@/model/prompts/core";
 import { VectorStore } from "@/memory/vector_store";
 import { MemoryRouter } from "@/memory/router";
+import { runAgentLoop } from "@/model/tools/agent";
 
 const vectorStore = new VectorStore();
 const router = new MemoryRouter();
@@ -71,17 +72,61 @@ export async function POST(req: NextRequest) {
 
     console.log(`Context mode: ${detectedMode}`);
 
+    const systemPrompt = getSystemPrompt(detectedMode) + contextString;
+
+    // Extract user/assistant messages (exclude any prior system messages)
+    const conversationMessages = messages.map(
+      (m: { role: string; content: string }) => ({
+        role: m.role as "user" | "assistant",
+        content: m.content,
+      }),
+    );
+
+    // Use agent loop with tool calling (Groq provider)
+    // Falls back to regular streaming for non-Groq providers
+    const isGroqProvider =
+      (provider || process.env.LLM_PROVIDER || "groq").toLowerCase() ===
+      "groq";
+
+    if (isGroqProvider) {
+      try {
+        const agentResponse = await runAgentLoop(
+          systemPrompt,
+          conversationMessages,
+        );
+
+        // Stream the agent's final response character by character for consistency
+        const encoder = new TextEncoder();
+        const stream = new ReadableStream({
+          start(controller) {
+            controller.enqueue(encoder.encode(agentResponse));
+            controller.close();
+          },
+        });
+
+        return new Response(stream, {
+          headers: {
+            "Content-Type": "text/plain; charset=utf-8",
+            "Transfer-Encoding": "chunked",
+          },
+        });
+      } catch (agentError) {
+        console.error("Agent loop failed, falling back to streaming:", agentError);
+        // Fall through to regular streaming below
+      }
+    }
+
+    // Fallback: regular streaming without tool calling (for Ollama, Gemini, etc.)
     const allMessages = [
       {
         role: "system" as const,
-        content: getSystemPrompt(detectedMode) + contextString,
+        content: systemPrompt,
       },
       ...messages,
     ];
 
     const llmProvider = getLLMProvider(provider);
 
-    // Create a ReadableStream from the provider's streaming response
     const stream = new ReadableStream({
       async start(controller) {
         for await (const chunk of llmProvider.chatStream(allMessages)) {
