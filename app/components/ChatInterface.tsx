@@ -218,7 +218,7 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
               </IconButton>
             </TextField.Slot>
           </TextField.Root>
-          <Flex justify="between" align="center" mt="2">
+          <Flex direction={{ initial: "column", md: "row" }} justify="between" align={{ initial: "start", md: "center" }} mt="2" gap="2">
             <Flex align="center" gap="2">
               <Text size="1" color="gray">
                 Context Mode:
