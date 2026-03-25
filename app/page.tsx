@@ -43,17 +43,20 @@ export default function Dashboard() {
 
         {/* Main Dashboard Layout */}
         <Flex
-          wrap="wrap"
+          direction={{ initial: "column", sm: "row" }}
           gap="5"
-          style={{ flexGrow: 1, minHeight: 0 }}
+          style={{ flexGrow: 1, minHeight: 0, width: "100%" }}
         >
           {/* Left Column: Controls & Status */}
-          <Box style={{ flexBasis: "350px", flexGrow: 1, maxWidth: "100%" }}>
+          <Box
+            width={{ initial: "100%", sm: "350px" }}
+            style={{ flexShrink: 0, flexGrow: 0, display: "flex", flexDirection: "column" }}
+          >
             <Flex
               direction="column"
               justify="start"
               gap="5"
-              style={{ overflowY: "auto" }}
+              style={{ overflowY: "auto", flexGrow: 1, paddingRight: "4px" }}
             >
               <Flex direction="column" gap="5">
                 <ContextSelector mode={mode} setMode={setMode} />
@@ -66,9 +69,9 @@ export default function Dashboard() {
           {/* Right Column: Chat Interface */}
           <Box
             style={{
-              flexBasis: "350px",
-              flexGrow: 9999,
-              minHeight: "500px",
+              flexShrink: 1,
+              flexGrow: 1,
+              minHeight: 0,
               display: "flex",
               flexDirection: "column",
             }}
