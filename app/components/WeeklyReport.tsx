@@ -16,6 +16,8 @@ import {
   UpdateIcon,
   ReaderIcon,
   CodeIcon,
+  ChevronDownIcon,
+  ChevronUpIcon,
 } from "@radix-ui/react-icons";
 import ReactMarkdown from "react-markdown";
 
@@ -24,6 +26,7 @@ export function WeeklyReport() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"rendered" | "raw">("rendered");
+  const [isExpanded, setIsExpanded] = useState(false);
 
   // Example fetch; real hook would pull from /api/report
   const handleFetchReport = async () => {
@@ -46,19 +49,33 @@ export function WeeklyReport() {
   return (
     <Card size="2" variant="surface">
       <Flex direction="column" gap="3">
-        <Text as="div" size="3" weight="bold">
-          Analytics & Reports
-        </Text>
-        <Text size="2" color="gray">
-          Generate or view your automated weekly highlight summaries.
-        </Text>
+        <Flex
+          justify="between"
+          align="center"
+          className="collapsible-header"
+          onClick={() => setIsExpanded(!isExpanded)}
+        >
+          <Box>
+            <Text as="div" size="3" weight="bold">
+              Analytics & Reports
+            </Text>
+            <Text size="2" color="gray">
+              Automated weekly highlight summaries
+            </Text>
+          </Box>
+          <Box className="collapsible-icon">
+            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          </Box>
+        </Flex>
 
-        <Dialog.Root open={open} onOpenChange={setOpen}>
-          <Dialog.Trigger>
-            <Button variant="soft" color="indigo" onClick={handleFetchReport}>
-              <FileTextIcon /> View Latest Report
-            </Button>
-          </Dialog.Trigger>
+        <Box className={isExpanded ? "collapsible-content-open" : "collapsible-content-closed"}>
+          <Flex direction="column" gap="3">
+            <Dialog.Root open={open} onOpenChange={setOpen}>
+              <Dialog.Trigger>
+                <Button variant="soft" color="indigo" onClick={handleFetchReport}>
+                  <FileTextIcon /> View Latest Report
+                </Button>
+              </Dialog.Trigger>
 
           <Dialog.Content style={{ maxWidth: 650 }}>
             <Flex justify="between" align="start" mb="4">
@@ -298,6 +315,8 @@ export function WeeklyReport() {
             <UpdateIcon /> Force Sync Now
           </Button>
         </Tooltip>
+          </Flex>
+        </Box>
       </Flex>
     </Card>
   );

@@ -3,9 +3,9 @@
   "version": "1.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev -p 7001",
+    "dev": "next dev -H 0.0.0.0 -p 7001",
     "build": "next build",
-    "start": "next start -p 7001",
+    "start": "next start -H 0.0.0.0 -p 7001",
     "lint": "eslint",
     "test": "vitest",
     "cli:exec": "TS_NODE_PROJECT=tsconfig.cli.json ts-node -r tsconfig-paths/register cli/index.ts",

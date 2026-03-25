@@ -31,3 +31,37 @@ body {
     display: none;
   }
 }
+
+.main-dashboard-wrap {
+  min-height: 100vh;
+  padding: 16px;
+}
+
+
+.collapsible-icon {
+  margin-left: 8px;
+}
+.collapsible-content-closed {
+  display: none !important;
+}
+.collapsible-header {
+  cursor: pointer;
+  padding: 4px 0;
+}
+
+@media (min-width: 768px) {
+  .main-dashboard-wrap {
+    height: 100vh;
+    padding: 24px;
+    overflow: hidden;
+  }
+  .collapsible-icon {
+    display: none !important;
+  }
+  .collapsible-header {
+    cursor: default !important;
+  }
+  .collapsible-content-closed {
+    display: block !important;
+  }
+}
