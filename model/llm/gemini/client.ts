@@ -106,9 +106,13 @@ export class GeminiProvider implements LLMProvider {
 export class GeminiEmbeddingProvider implements EmbeddingProvider {
   async embed(text: string): Promise<number[]> {
     const genAI = getGenAI();
-    const model = genAI.getGenerativeModel({ model: DEFAULT_EMBEDDING_MODEL });
+    const modelName = process.env.GEMINI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
+    const model = genAI.getGenerativeModel({ model: modelName });
 
-    const result = await model.embedContent(text);
+    const result = await model.embedContent({
+      content: { role: "user", parts: [{ text }] },
+      outputDimensionality: 768,
+    } as any);
     return result.embedding.values;
   }
 }

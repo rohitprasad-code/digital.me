@@ -56,7 +56,7 @@ memory/**/*.pdf
 memory/**/*.txt
 
 # data
-data/*.json
+/data
 
 # logs
 .logs/*
