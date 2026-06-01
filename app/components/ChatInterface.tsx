@@ -41,6 +41,13 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
   const [selectedModel, setSelectedModel] = useState<string>("groq");
   const viewportRef = useRef<HTMLDivElement>(null);
 
+  // Free Tier Rate Limiting & Developer Authentication
+  const [passcode, setPasscode] = useState("");
+  const [customKey, setCustomKey] = useState("");
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [freeMessagesCount, setFreeMessagesCount] = useState(0);
+  const [showAuthForm, setShowAuthForm] = useState(false);
+
   useEffect(() => {
     async function fetchModels() {
       try {
@@ -55,6 +62,24 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
       }
     }
     fetchModels();
+
+    // Load auth variables from localStorage
+    const savedPasscode = localStorage.getItem("dev_passcode") || "";
+    const savedCustomKey = localStorage.getItem("custom_api_key") || "";
+    setPasscode(savedPasscode);
+    setCustomKey(savedCustomKey);
+    if (savedPasscode === "developer" || savedCustomKey.trim().length > 0) {
+      setIsAuthenticated(true);
+    }
+
+    // Read cookie to set local free count
+    const count = document.cookie
+      .split("; ")
+      .find((row) => row.startsWith("free_chat_count="))
+      ?.split("=")[1];
+    if (count) {
+      setFreeMessagesCount(parseInt(count, 10));
+    }
   }, []);
 
   useEffect(() => {
@@ -67,21 +92,48 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
     if (e) e.preventDefault();
     if (!input.trim() || isLoading) return;
 
+    // Enforce front-end limit check
+    if (!isAuthenticated && freeMessagesCount >= 5) {
+      return;
+    }
+
     const userMessage: Message = { role: "user", content: input };
     setMessages((prev) => [...prev, userMessage]);
     setInput("");
     setIsLoading(true);
 
     try {
+      const headers: Record<string, string> = {
+        "Content-Type": "application/json",
+      };
+      if (passcode) {
+        headers["x-auth-passcode"] = passcode;
+      }
+      if (customKey) {
+        headers["x-custom-api-key"] = customKey;
+      }
+
       const response = await fetch("/api/chat", {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({
           messages: [...messages, userMessage],
           mode,
           provider: selectedModel,
         }),
       });
+
+      if (response.status === 429) {
+        setFreeMessagesCount(5);
+        setMessages((prev) => [
+          ...prev,
+          {
+            role: "assistant",
+            content: "⚠️ Free tier limit reached. Please authenticate in the panel below to unlock unlimited conversations.",
+          },
+        ]);
+        return;
+      }
 
       if (!response.ok) throw new Error("Failed to fetch");
       const reader = response.body?.getReader();
@@ -103,6 +155,10 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
           newMessages[newMessages.length - 1].content = assistantMessage;
           return newMessages;
         });
+      }
+
+      if (!isAuthenticated) {
+        setFreeMessagesCount((prev) => Math.min(5, prev + 1));
       }
     } catch (error) {
       console.error("Chat error:", error);
@@ -197,68 +253,201 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
           </div>
         </ScrollArea>
 
-        {/* Input Form */}
-        <form onSubmit={handleSubmit} style={{ marginTop: "auto" }}>
-          <TextField.Root
-            size="3"
-            placeholder="Send a message..."
-            value={input}
-            onChange={(e) => setInput(e.target.value)}
-            disabled={isLoading}
+        {/* Input Form & Locked Overlay */}
+        {!isAuthenticated && freeMessagesCount >= 5 ? (
+          <Box
+            style={{
+              marginTop: "auto",
+              padding: "20px",
+              border: "1px dashed var(--indigo-5)",
+              borderRadius: "12px",
+              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(168, 85, 247, 0.04) 100%)",
+              backdropFilter: "blur(4px)",
+            }}
           >
-            <TextField.Slot pr="1" side="right">
-              <IconButton
-                size="2"
-                variant="solid"
-                color="indigo"
-                type="submit"
-                disabled={!input.trim() || isLoading}
-              >
-                <PaperPlaneIcon />
-              </IconButton>
-            </TextField.Slot>
-          </TextField.Root>
-          <Flex direction={{ initial: "column", md: "row" }} justify="between" align={{ initial: "start", md: "center" }} mt="2" gap="2">
-            <Flex align="center" gap="2">
-              <Text size="1" color="gray">
-                Context Mode:
+            <Flex direction="column" gap="2" align="center" style={{ textAlign: "center" }}>
+              <Text size="3" weight="bold" color="indigo">
+                🔒 Free Message Limit Reached
               </Text>
-              <Select.Root
-                size="1"
-                value={mode}
-                onValueChange={(val) => setMode(val as Mode)}
-              >
-                <Select.Trigger variant="ghost" />
-                <Select.Content>
-                  <Select.Item value="default">Auto</Select.Item>
-                  <Select.Item value="recruiter">Recruiter</Select.Item>
-                  <Select.Item value="social">Friend</Select.Item>
-                </Select.Content>
-              </Select.Root>
-            </Flex>
-            {availableModels.length > 0 && (
-              <Flex align="center" gap="2">
+              <Text size="1" color="gray" style={{ maxWidth: "340px" }}>
+                You have sent all 5 free messages. Unlock unlimited chats with Rohit&apos;s Digital Twin by entering a passcode or an API key below.
+              </Text>
+              <Flex direction="column" gap="2" width="100%" mt="2">
+                <TextField.Root
+                  placeholder="Enter passcode (e.g. developer)..."
+                  type="password"
+                  size="2"
+                  onChange={(e) => {
+                    const val = e.target.value;
+                    if (val === "developer") {
+                      localStorage.setItem("dev_passcode", "developer");
+                      setPasscode("developer");
+                      setIsAuthenticated(true);
+                      setFreeMessagesCount(0);
+                    }
+                  }}
+                />
                 <Text size="1" color="gray">
-                  LLM Provider:
+                  Or enter your own Groq/Gemini API Key:
                 </Text>
-                <Select.Root
-                  size="1"
-                  value={selectedModel}
-                  onValueChange={setSelectedModel}
-                >
-                  <Select.Trigger variant="ghost" />
-                  <Select.Content>
-                    {availableModels.map((m) => (
-                      <Select.Item key={m.id} value={m.id}>
-                        {m.name}
-                      </Select.Item>
-                    ))}
-                  </Select.Content>
-                </Select.Root>
+                <TextField.Root
+                  placeholder="Groq or Gemini API Key..."
+                  size="2"
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    if (val.startsWith("gsk_") || val.startsWith("AIzaSy")) {
+                      localStorage.setItem("custom_api_key", val);
+                      setCustomKey(val);
+                      setIsAuthenticated(true);
+                      setFreeMessagesCount(0);
+                    }
+                  }}
+                />
               </Flex>
-            )}
-          </Flex>
-        </form>
+            </Flex>
+          </Box>
+        ) : (
+          <form onSubmit={handleSubmit} style={{ marginTop: "auto" }}>
+            <TextField.Root
+              size="3"
+              placeholder="Send a message..."
+              value={input}
+              onChange={(e) => setInput(e.target.value)}
+              disabled={isLoading}
+            >
+              <TextField.Slot pr="1" side="right">
+                <IconButton
+                  size="2"
+                  variant="solid"
+                  color="indigo"
+                  type="submit"
+                  disabled={!input.trim() || isLoading}
+                >
+                  <PaperPlaneIcon />
+                </IconButton>
+              </TextField.Slot>
+            </TextField.Root>
+            <Flex
+              direction={{ initial: "column", md: "row" }}
+              justify="between"
+              align={{ initial: "start", md: "center" }}
+              mt="2"
+              gap="2"
+            >
+              <Flex align="center" gap="4" wrap="wrap">
+                <Flex align="center" gap="2">
+                  <Text size="1" color="gray">
+                    Context Mode:
+                  </Text>
+                  <Select.Root
+                    size="1"
+                    value={mode}
+                    onValueChange={(val) => setMode(val as Mode)}
+                  >
+                    <Select.Trigger variant="ghost" />
+                    <Select.Content>
+                      <Select.Item value="default">Auto</Select.Item>
+                      <Select.Item value="recruiter">Recruiter</Select.Item>
+                      <Select.Item value="social">Friend</Select.Item>
+                    </Select.Content>
+                  </Select.Root>
+                </Flex>
+
+                <Flex align="center" gap="2">
+                  {isAuthenticated ? (
+                    <Text size="1" color="green" weight="bold">
+                      ✓ Unlimited Access
+                    </Text>
+                  ) : (
+                    <Text
+                      size="1"
+                      color="indigo"
+                      style={{ cursor: "pointer", textDecoration: "underline" }}
+                      onClick={() => setShowAuthForm(!showAuthForm)}
+                    >
+                      🔒 Free Tier: {5 - freeMessagesCount} left
+                    </Text>
+                  )}
+                </Flex>
+              </Flex>
+              {availableModels.length > 0 && (
+                <Flex align="center" gap="2">
+                  <Text size="1" color="gray">
+                    LLM Provider:
+                  </Text>
+                  <Select.Root
+                    size="1"
+                    value={selectedModel}
+                    onValueChange={setSelectedModel}
+                  >
+                    <Select.Trigger variant="ghost" />
+                    <Select.Content>
+                      {availableModels.map((m) => (
+                        <Select.Item key={m.id} value={m.id}>
+                          {m.name}
+                        </Select.Item>
+                      ))}
+                    </Select.Content>
+                  </Select.Root>
+                </Flex>
+              )}
+            </Flex>
+          </form>
+        )}
+
+        {/* Collapsible Authentication Form */}
+        {showAuthForm && !isAuthenticated && (
+          <Card variant="classic" style={{ marginTop: "8px", padding: "12px" }}>
+            <Flex direction="column" gap="2">
+              <Text size="1" weight="bold" color="indigo">
+                Developer Authentication Panel
+              </Text>
+              <Text size="1" color="gray">
+                Enter passcode or custom API key to enable unlimited messages.
+              </Text>
+              <Flex gap="2">
+                <TextField.Root
+                  placeholder="Passcode..."
+                  type="password"
+                  style={{ flexGrow: 1 }}
+                  size="1"
+                  onChange={(e) => {
+                    if (e.target.value === "developer") {
+                      localStorage.setItem("dev_passcode", "developer");
+                      setPasscode("developer");
+                      setIsAuthenticated(true);
+                      setFreeMessagesCount(0);
+                      setShowAuthForm(false);
+                    }
+                  }}
+                />
+                <TextField.Root
+                  placeholder="API Key..."
+                  style={{ flexGrow: 1 }}
+                  size="1"
+                  onChange={(e) => {
+                    const val = e.target.value.trim();
+                    if (val.startsWith("gsk_") || val.startsWith("AIzaSy")) {
+                      localStorage.setItem("custom_api_key", val);
+                      setCustomKey(val);
+                      setIsAuthenticated(true);
+                      setFreeMessagesCount(0);
+                      setShowAuthForm(false);
+                    }
+                  }}
+                />
+                <IconButton
+                  size="1"
+                  color="gray"
+                  variant="ghost"
+                  onClick={() => setShowAuthForm(false)}
+                >
+                  ✕
+                </IconButton>
+              </Flex>
+            </Flex>
+          </Card>
+        )}
       </Flex>
     </Card>
   );

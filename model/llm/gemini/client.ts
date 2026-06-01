@@ -112,7 +112,7 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     const result = await model.embedContent({
       content: { role: "user", parts: [{ text }] },
       outputDimensionality: 768,
-    } as any);
+    } as unknown as Parameters<typeof model.embedContent>[0]);
     return result.embedding.values;
   }
 }

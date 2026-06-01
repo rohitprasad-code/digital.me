@@ -28,6 +28,30 @@ export async function GET() {
 
 export async function POST(req: NextRequest) {
   try {
+    // Check authentication headers
+    const authPasscode = req.headers.get("x-auth-passcode");
+    const customApiKey = req.headers.get("x-custom-api-key");
+    const isAuthenticated =
+      authPasscode === "developer" ||
+      (!!customApiKey && customApiKey.trim().length > 0);
+
+    let chatCount = 0;
+    if (!isAuthenticated) {
+      const countCookie = req.cookies.get("free_chat_count");
+      chatCount = parseInt(countCookie?.value || "0", 10);
+      if (chatCount >= 5) {
+        return new Response(
+          JSON.stringify({
+            error: "Free tier limit reached. Please authenticate to unlock.",
+          }),
+          {
+            status: 429,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
+      }
+    }
+
     const { messages, mode, provider } = await req.json();
 
     // Validate mode if provided
@@ -104,12 +128,21 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        return new Response(stream, {
+        const response = new Response(stream, {
           headers: {
             "Content-Type": "text/plain; charset=utf-8",
             "Transfer-Encoding": "chunked",
           },
         });
+
+        if (!isAuthenticated) {
+          response.headers.set(
+            "Set-Cookie",
+            `free_chat_count=${chatCount + 1}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict`,
+          );
+        }
+
+        return response;
       } catch (agentError) {
         console.error("Agent loop failed, falling back to streaming:", agentError);
         // Fall through to regular streaming below
@@ -136,12 +169,21 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    return new Response(stream, {
+    const response = new Response(stream, {
       headers: {
         "Content-Type": "text/plain; charset=utf-8",
         "Transfer-Encoding": "chunked",
       },
     });
+
+    if (!isAuthenticated) {
+      response.headers.set(
+        "Set-Cookie",
+        `free_chat_count=${chatCount + 1}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict`,
+      );
+    }
+
+    return response;
   } catch (error) {
     console.error("Error in chat route:", error);
     return new Response(
