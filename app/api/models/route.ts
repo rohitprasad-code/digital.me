@@ -1,18 +1,10 @@
 import { NextResponse } from "next/server";
-import { getLLMProvider } from "@/model/llm/provider";
-
-export const dynamic = "force-dynamic";
+import { getLLMProvider, AVAILABLE_PROVIDERS } from "@/model/llm/provider";
 
 export async function GET() {
-  const models = [
-    { id: "ollama", name: "Ollama (Local)" },
-    { id: "groq", name: "Groq (Fast)" },
-    { id: "gemini", name: "Gemini (Google)" },
-  ];
-
   const availableModels = [];
 
-  for (const model of models) {
+  for (const model of AVAILABLE_PROVIDERS) {
     try {
       const provider = getLLMProvider(model.id);
       await provider.healthCheck();

@@ -24,6 +24,12 @@ export interface LLMProvider {
   healthCheck(): Promise<void>;
 }
 
+export const AVAILABLE_PROVIDERS = [
+  { id: "groq", name: "Groq (Fast)" },
+  { id: "gemini", name: "Gemini (Google)" },
+  { id: "ollama", name: "Ollama (Local)" },
+];
+
 class FallbackLLMProvider implements LLMProvider {
   private providers: { name: string; getProvider: () => LLMProvider }[];
 
