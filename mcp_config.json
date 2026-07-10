@@ -1,0 +1,15 @@
+{
+  "mcpServers": {
+    "strava": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@r-huijts/strava-mcp-server"
+      ],
+      "env": {
+        "STRAVA_CLIENT_ID": "199188",
+        "STRAVA_CLIENT_SECRET": "37efdae14dbddc7f5d145939b0e2be31db09c228"
+      }
+    }
+  }
+}
