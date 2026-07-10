@@ -8,7 +8,7 @@
  *   3. Repeats until the LLM produces a final text response
  */
 
-import { TOOL_MAP, toolSchemas } from "./registry";
+import { TOOL_MAP, toolSchemas, initializeMcpTools, isInitialized } from "./registry";
 import Groq from "groq-sdk";
 import type {
   ChatCompletionMessageParam,
@@ -38,6 +38,9 @@ export async function runAgentLoop(
   systemPrompt: string,
   userMessages: { role: "user" | "assistant"; content: string }[],
 ): Promise<string> {
+  if (!isInitialized) {
+    await initializeMcpTools();
+  }
   const groq = getGroqClient();
   const model = process.env.GROQ_CHAT_MODEL || "llama-3.1-8b-instant";
 
