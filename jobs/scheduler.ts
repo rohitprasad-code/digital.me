@@ -2,7 +2,6 @@ import cron from "node-cron";
 import { exec } from "child_process";
 import { log } from "../utils/logger";
 import { loadEnvConfig } from "@next/env";
-import { refreshTokenSilently } from "../integrations/strava/auth";
 
 loadEnvConfig(process.cwd());
 
@@ -52,19 +51,6 @@ cron.schedule("50 23 * * 0", () => {
       }
     },
   );
-});
-
-// Job 3: Refresh Strava tokens every 5 hours
-cron.schedule("0 */5 * * *", async () => {
-  log.info("Cron job triggered: Refreshing Strava tokens...");
-  const token = await refreshTokenSilently();
-  if (token) {
-    log.info("Cron strava refresh completed successfully.");
-  } else {
-    log.warn(
-      "Cron strava refresh: no valid token. Run `npm run cli strava:auth` manually.",
-    );
-  }
 });
 
 log.info("Scheduler is running. Waiting for jobs...");

@@ -1,7 +1,7 @@
 import path from "path";
 import { log } from "../utils/logger";
 import { VectorStore } from "./vector_store/index";
-import { integrators } from "../integrations";
+import { initializeMcpTools, mcpManager, isInitialized } from "../model/tools/registry";
 import {
   crawlDirectory,
   determineFileRole,
@@ -53,18 +53,74 @@ async function ingest() {
     );
   }
 
-  for (const integrator of integrators) {
+  if (!isInitialized) {
+    await initializeMcpTools();
+  }
+
+  const clients = mcpManager.getClients();
+  for (const [serverName, client] of clients.entries()) {
     try {
-      await integrator.ingest(pipeline);
+      log.info(`Syncing data from MCP Server: ${serverName}...`);
+      
+      // Sync through resources if available
+      const resourcesRes = await client.listResources().catch(() => ({ resources: [] }));
+      if (resourcesRes.resources && resourcesRes.resources.length > 0) {
+        for (const resource of resourcesRes.resources) {
+          try {
+            const readRes = await client.readResource({ uri: resource.uri });
+            if (readRes.contents) {
+              for (const content of readRes.contents) {
+                if ("text" in content && content.text) {
+                  await pipeline.syncDocument(content.text, {
+                    source: `mcp:${serverName}:${resource.uri}`,
+                    title: resource.name,
+                  });
+                }
+              }
+            }
+          } catch (resErr) {
+            log.warn(`Failed to read MCP resource ${resource.uri}:`, resErr instanceof Error ? resErr.message : String(resErr));
+          }
+        }
+      }
+
+      // Explicit fallbacks for known servers if they don't use resources
+      if (serverName === "strava") {
+        try {
+          const profile = (await client.callTool({ name: "get_athlete", arguments: {} }).catch(() => null)) as any;
+          if (profile && profile.content) {
+            await pipeline.syncDocument(JSON.stringify(profile.content), {
+              source: "mcp:strava:profile",
+              title: "Strava Athlete Profile",
+            });
+            log.success("Ingested Strava athlete profile via MCP tool");
+          }
+
+          const activities = (await client.callTool({ name: "get_activities", arguments: { limit: 10 } }).catch(() => null)) as any;
+          if (activities && activities.content) {
+            await pipeline.syncDocument(JSON.stringify(activities.content), {
+              source: "mcp:strava:activities",
+              title: "Strava Activities",
+            });
+            log.success("Ingested Strava activities via MCP tool");
+          }
+        } catch (toolErr) {
+          log.warn("Failed to ingest Strava details using standard tools", toolErr);
+        }
+      }
     } catch (err) {
-      log.error(`Integrator ${integrator.name} failed`, {
-        error: err instanceof Error ? err.message : String(err),
-      });
+      log.error(`Failed to ingest from MCP server: ${serverName}`, err instanceof Error ? err.message : String(err));
     }
   }
 
   // Final step: clean up any old documents that weren't synced today
   // await pipeline.cleanupStaleDocuments();
+
+  try {
+    await mcpManager.close();
+  } catch (err) {
+    log.error("Failed to close MCP manager gracefully", err instanceof Error ? err.message : String(err));
+  }
 
   log.info("Ingestion complete!");
 }
