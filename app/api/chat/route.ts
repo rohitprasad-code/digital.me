@@ -16,7 +16,7 @@ export async function GET() {
   try {
     const provider = getLLMProvider();
     await provider.healthCheck();
-    return NextResponse.json({ status: "running", message: "Digital-Me <Chat> is running" });
+    return NextResponse.json({ status: "running", message: "Digital-Me (Chat) is running" });
   } catch (error) {
     console.error("Health check failed:", error);
     return NextResponse.json(
