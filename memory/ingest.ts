@@ -95,13 +95,14 @@ async function ingest() {
             for (const task of serverConfig.ingest) {
               try {
                 log.info(`Running ingest tool: ${task.tool} for ${serverName}...`);
-                const result = (await client.callTool({
+                const result = await client.callTool({
                   name: task.tool,
                   arguments: task.args || {},
-                }).catch(() => null)) as any;
+                }).catch(() => null);
 
-                if (result && result.content) {
-                  await pipeline.syncDocument(JSON.stringify(result.content), {
+                if (result && typeof result === "object" && "content" in result) {
+                  const content = (result as Record<string, unknown>).content;
+                  await pipeline.syncDocument(JSON.stringify(content), {
                     source: `mcp:${serverName}:${task.source}`,
                     title: task.title || `${serverName} ${task.tool}`,
                   });

@@ -10,7 +10,7 @@ export const TOOL_MAP: Record<
   (args: Record<string, unknown>) => Promise<unknown>
 > = {};
 
-export const toolSchemas: any[] = [];
+export const toolSchemas: Record<string, unknown>[] = [];
 export let isInitialized = false;
 
 export async function initializeMcpTools() {
