@@ -3,59 +3,86 @@ import path from "path";
 import { WEEKLY_REPORT_PROMPT } from "../../model/prompts/weekly_report";
 import { getLLMProvider } from "../../model/llm/provider";
 import { log } from "../../utils/logger";
-import { DYNAMIC_DIR, REPORTS_DIR } from "../../utils/paths";
+import { REPORTS_DIR } from "../../utils/paths";
+import { VectorStore } from "../../memory/vector_store";
 
 export async function generateWeeklyReport(): Promise<string> {
   log.info("Generating weekly report...");
 
-  // 1. Collect Data Inline from Local Memory Storage
-  const dynamicMemoryDir = DYNAMIC_DIR;
+  // 1. Collect Data from Vector Store (previously saved from MCP sync)
+  const vectorStore = new VectorStore();
   let githubData = null;
   let stravaData = null;
 
   try {
-    const githubPath = path.join(dynamicMemoryDir, "github.json");
-    if (fs.existsSync(githubPath)) {
-      const content = fs.readFileSync(githubPath, "utf-8");
-      const parsed = JSON.parse(content);
+    await vectorStore.load();
+    const allDocs = await vectorStore.getAllDocuments();
 
-      if (parsed.activities && Array.isArray(parsed.activities)) {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentActivity = parsed.activities.filter(
-          (event: { created_at: string }) => new Date(event.created_at) >= sevenDaysAgo,
-        );
-        githubData = { recentActivities: recentActivity.length, ...parsed };
+    // Process GitHub data
+    const githubDocs = allDocs.filter(
+      (d) =>
+        typeof d.metadata?.source === "string" &&
+        d.metadata.source.startsWith("mcp:github"),
+    );
+    let githubMerged: Record<string, any> = {};
+    for (const doc of githubDocs) {
+      try {
+        const parsed = JSON.parse(doc.content);
+        if (parsed && typeof parsed === "object") {
+          githubMerged = { ...githubMerged, ...parsed };
+        }
+      } catch (e) {
+        // Not JSON content, skip or log
       }
     }
-  } catch (error) {
-    log.warn(
-      "Failed to read local GitHub data:",
-      error instanceof Error ? error.message : "Unknown error",
-    );
-  }
-
-  try {
-    const stravaPath = path.join(dynamicMemoryDir, "strava.json");
-    if (fs.existsSync(stravaPath)) {
-      const content = fs.readFileSync(stravaPath, "utf-8");
-      const parsed = JSON.parse(content);
-
-      if (parsed.activities && Array.isArray(parsed.activities)) {
+    if (Object.keys(githubMerged).length > 0) {
+      if (githubMerged.activities && Array.isArray(githubMerged.activities)) {
         const sevenDaysAgo = new Date();
         sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentActivities = parsed.activities.filter(
+        const recentActivity = githubMerged.activities.filter(
+          (event: { created_at: string }) => new Date(event.created_at) >= sevenDaysAgo,
+        );
+        githubData = { recentActivities: recentActivity.length, ...githubMerged };
+      } else {
+        githubData = githubMerged;
+      }
+    }
+
+    // Process Strava data
+    const stravaDocs = allDocs.filter(
+      (d) =>
+        typeof d.metadata?.source === "string" &&
+        d.metadata.source.startsWith("mcp:strava"),
+    );
+    let stravaMerged: Record<string, any> = {};
+    for (const doc of stravaDocs) {
+      try {
+        const parsed = JSON.parse(doc.content);
+        if (parsed && typeof parsed === "object") {
+          stravaMerged = { ...stravaMerged, ...parsed };
+        }
+      } catch (e) {
+        // Not JSON content, skip or log
+      }
+    }
+    if (Object.keys(stravaMerged).length > 0) {
+      if (stravaMerged.activities && Array.isArray(stravaMerged.activities)) {
+        const sevenDaysAgo = new Date();
+        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+        const recentActivities = stravaMerged.activities.filter(
           (a: { start_date: string }) => new Date(a.start_date) >= sevenDaysAgo,
         );
         stravaData = {
           recentActivitiesCount: recentActivities.length,
-          ...parsed,
+          ...stravaMerged,
         };
+      } else {
+        stravaData = stravaMerged;
       }
     }
   } catch (error) {
-    log.warn(
-      "Failed to read local Strava data:",
+    log.error(
+      "Failed to read data from Vector Store:",
       error instanceof Error ? error.message : "Unknown error",
     );
   }
