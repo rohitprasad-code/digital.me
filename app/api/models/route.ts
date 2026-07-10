@@ -1,6 +1,8 @@
 import { NextResponse } from "next/server";
 import { getLLMProvider } from "@/model/llm/provider";
 
+export const dynamic = "force-dynamic";
+
 export async function GET() {
   const models = [
     { id: "ollama", name: "Ollama (Local)" },
