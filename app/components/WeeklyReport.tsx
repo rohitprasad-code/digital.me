@@ -35,8 +35,8 @@ export function WeeklyReport() {
     try {
       const res = await fetch("/api/report");
       if (!res.ok) throw new Error("No report");
-      const text = await res.text();
-      setReportData(text);
+      const data = await res.json();
+      setReportData(data.content);
     } catch {
       setReportData(
         "No reports found for this week yet. Digital-Me is still aggregating activity.",

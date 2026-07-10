@@ -17,9 +17,7 @@ export async function GET(req: NextRequest) {
     const reportPath = path.join(reportsDir, `${dateStr}.md`);
     if (fs.existsSync(reportPath)) {
       const content = fs.readFileSync(reportPath, "utf-8");
-      return new NextResponse(content, {
-        headers: { "Content-Type": "text/markdown" },
-      });
+      return NextResponse.json({ content });
     } else {
       return NextResponse.json(
         { error: "Report not found for given date." },
@@ -42,17 +40,13 @@ export async function GET(req: NextRequest) {
   const latestFile = path.join(reportsDir, files[0]);
   const content = fs.readFileSync(latestFile, "utf-8");
 
-  return new NextResponse(content, {
-    headers: { "Content-Type": "text/markdown" },
-  });
+  return NextResponse.json({ content });
 }
 
 export async function POST() {
   try {
     const reportMarkdown = await generateWeeklyReport();
-    return new NextResponse(reportMarkdown, {
-      headers: { "Content-Type": "text/markdown" },
-    });
+    return NextResponse.json({ content: reportMarkdown });
   } catch (error) {
     console.error("Failed to generate report:", error);
     return NextResponse.json(
