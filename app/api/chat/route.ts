@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
 
     console.log(`Context mode: ${detectedMode}`);
 
-    const systemPrompt = getSystemPrompt(detectedMode) + contextString;
+    const systemPrompt = getSystemPrompt(detectedMode) + contextString + "\n\nIMPORTANT: Keep your response short, direct, and on-point (maximum 1-2 sentences). Avoid writing long paragraphs.";
 
     // Extract user/assistant messages (exclude any prior system messages)
     const conversationMessages = messages.map(
