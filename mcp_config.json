@@ -39,6 +39,14 @@
           "title": "GitHub Repositories"
         }
       ]
+    },
+    "web-search": {
+      "command": "npx",
+      "args": [
+        "-y",
+        "@rp-x/web-mcp-server"
+      ],
+      "env": {}
     }
   }
 }
