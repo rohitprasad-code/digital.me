@@ -8,7 +8,21 @@
       ],
       "env": {
         "STRAVA_CLIENT_ID": "199188"
-      }
+      },
+      "ingest": [
+        {
+          "tool": "get_athlete",
+          "args": {},
+          "source": "profile",
+          "title": "Strava Athlete Profile"
+        },
+        {
+          "tool": "get_activities",
+          "args": { "limit": 10 },
+          "source": "activities",
+          "title": "Recent Activities"
+        }
+      ]
     },
     "github": {
       "command": "npx",
@@ -16,7 +30,15 @@
         "-y",
         "@modelcontextprotocol/server-github"
       ],
-      "env": {}
+      "env": {},
+      "ingest": [
+        {
+          "tool": "list_repositories",
+          "args": {},
+          "source": "repos",
+          "title": "GitHub Repositories"
+        }
+      ]
     }
   }
 }

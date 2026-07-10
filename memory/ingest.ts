@@ -1,4 +1,5 @@
 import path from "path";
+import fs from "fs";
 import { log } from "../utils/logger";
 import { VectorStore } from "./vector_store/index";
 import { initializeMcpTools, mcpManager, isInitialized } from "../model/tools/registry";
@@ -84,44 +85,35 @@ async function ingest() {
         }
       }
 
-      // Explicit fallbacks for known servers if they don't use resources
-      if (serverName === "strava") {
+      // Dynamic Tool-Based Sync (fully generic)
+      const configPath = path.resolve(process.cwd(), "mcp_config.json");
+      if (fs.existsSync(configPath)) {
         try {
-          const profile = (await client.callTool({ name: "get_athlete", arguments: {} }).catch(() => null)) as any;
-          if (profile && profile.content) {
-            await pipeline.syncDocument(JSON.stringify(profile.content), {
-              source: "mcp:strava:profile",
-              title: "Strava Athlete Profile",
-            });
-            log.success("Ingested Strava athlete profile via MCP tool");
-          }
+          const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+          const serverConfig = config.mcpServers?.[serverName];
+          if (serverConfig && Array.isArray(serverConfig.ingest)) {
+            for (const task of serverConfig.ingest) {
+              try {
+                log.info(`Running ingest tool: ${task.tool} for ${serverName}...`);
+                const result = (await client.callTool({
+                  name: task.tool,
+                  arguments: task.args || {},
+                }).catch(() => null)) as any;
 
-          const activities = (await client.callTool({ name: "get_activities", arguments: { limit: 10 } }).catch(() => null)) as any;
-          if (activities && activities.content) {
-            await pipeline.syncDocument(JSON.stringify(activities.content), {
-              source: "mcp:strava:activities",
-              title: "Strava Activities",
-            });
-            log.success("Ingested Strava activities via MCP tool");
+                if (result && result.content) {
+                  await pipeline.syncDocument(JSON.stringify(result.content), {
+                    source: `mcp:${serverName}:${task.source}`,
+                    title: task.title || `${serverName} ${task.tool}`,
+                  });
+                  log.success(`✓ Ingested ${task.tool} via MCP tool`);
+                }
+              } catch (taskErr) {
+                log.warn(`Failed to run ingest tool "${task.tool}" for ${serverName}`, taskErr);
+              }
+            }
           }
-        } catch (toolErr) {
-          log.warn("Failed to ingest Strava details using standard tools", toolErr);
-        }
-      }
-
-      if (serverName === "github") {
-        try {
-          const username = process.env.GITHUB_USERNAME || "rohitprasad-code";
-          const repos = (await client.callTool({ name: "list_repositories", arguments: {} }).catch(() => null)) as any;
-          if (repos && repos.content) {
-            await pipeline.syncDocument(JSON.stringify(repos.content), {
-              source: "mcp:github:repos",
-              title: `GitHub Repositories for ${username}`,
-            });
-            log.success("Ingested GitHub repositories via MCP tool");
-          }
-        } catch (toolErr) {
-          log.warn("Failed to ingest GitHub details using standard tools", toolErr);
+        } catch (configErr) {
+          log.error(`Failed to parse mcp_config.json for dynamic ingestion:`, configErr instanceof Error ? configErr.message : String(configErr));
         }
       }
     } catch (err) {
