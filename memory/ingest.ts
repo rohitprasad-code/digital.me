@@ -108,6 +108,22 @@ async function ingest() {
           log.warn("Failed to ingest Strava details using standard tools", toolErr);
         }
       }
+
+      if (serverName === "github") {
+        try {
+          const username = process.env.GITHUB_USERNAME || "rohitprasad-code";
+          const repos = (await client.callTool({ name: "list_repositories", arguments: {} }).catch(() => null)) as any;
+          if (repos && repos.content) {
+            await pipeline.syncDocument(JSON.stringify(repos.content), {
+              source: "mcp:github:repos",
+              title: `GitHub Repositories for ${username}`,
+            });
+            log.success("Ingested GitHub repositories via MCP tool");
+          }
+        } catch (toolErr) {
+          log.warn("Failed to ingest GitHub details using standard tools", toolErr);
+        }
+      }
     } catch (err) {
       log.error(`Failed to ingest from MCP server: ${serverName}`, err instanceof Error ? err.message : String(err));
     }
