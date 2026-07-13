@@ -1,7 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
 import { log } from "../../../utils/logger";
-import { STATIC_DIR } from "../../../utils/paths";
 import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
 import { getLLMProvider } from "../../../model/llm/provider";
 import { processDocument } from "../index";
@@ -89,14 +88,6 @@ export class PdfParser {
       const structuredData = await this.extractStructuredData(text);
 
       if (structuredData) {
-        const jsonName = filename.replace(/\.pdf$/i, ".json");
-        const resumeJsonPath = path.join(STATIC_DIR, jsonName);
-        await fs.mkdir(path.dirname(resumeJsonPath), { recursive: true });
-        await fs.writeFile(
-          resumeJsonPath,
-          JSON.stringify(structuredData, null, 2),
-        );
-
         if (structuredData.experience) {
           for (const exp of structuredData.experience) {
             const content = `Experience at ${exp.company} as ${exp.role} (${exp.duration}):\n${(exp.details || []).join("\n")}`;

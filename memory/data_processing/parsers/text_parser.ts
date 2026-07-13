@@ -1,7 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
 import { log } from "../../../utils/logger";
-import { STATIC_DIR } from "../../../utils/paths";
 import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
 import { UnstructuredConverter } from "../unstructured_converter";
 import { processDocument } from "../index";
@@ -20,17 +19,6 @@ export class TextParser {
         const structuredData =
           await UnstructuredConverter.extractStructuredData(content, filename);
         if (structuredData) {
-          const jsonName = filename + ".json";
-          const staticPath = path.join(STATIC_DIR, jsonName);
-          await fs.mkdir(path.dirname(staticPath), { recursive: true });
-          await fs.writeFile(
-            staticPath,
-            JSON.stringify(structuredData, null, 2),
-          );
-          log.success(
-            `Saved extracted structure for ${filename} to ${staticPath}`,
-          );
-
           const metaContent = `Metadata for ${filename}:\nTitle: ${structuredData.title}\nSummary: ${structuredData.summary}\nTopics: ${structuredData.topics.join(", ")}`;
           await pipeline.syncDocument(
             metaContent,

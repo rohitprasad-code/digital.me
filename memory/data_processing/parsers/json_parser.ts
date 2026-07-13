@@ -1,7 +1,6 @@
 import fs from "fs/promises";
 import path from "path";
 import { log } from "../../../utils/logger";
-import { STATIC_DIR } from "../../../utils/paths";
 import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
 
 export class JsonParser {
@@ -51,10 +50,6 @@ export class JsonParser {
           content,
         );
       }
-
-      const targetPath = path.join(STATIC_DIR, filename);
-      await fs.mkdir(path.dirname(targetPath), { recursive: true });
-      await fs.writeFile(targetPath, JSON.stringify(data, null, 2));
 
       log.success("Successfully ingested " + filename);
     } catch (error) {

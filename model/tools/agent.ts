@@ -53,7 +53,7 @@ export async function runAgentLoop(
     const response = await groq.chat.completions.create({
       model,
       messages,
-      tools: toolSchemas as ChatCompletionTool[],
+      tools: toolSchemas as unknown as ChatCompletionTool[],
       tool_choice: "auto",
     });
 
