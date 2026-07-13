@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { Card, Flex, Text, Badge, Separator, Box } from "@radix-ui/themes";
+import { Card, Flex, Text, Badge, Box } from "@radix-ui/themes";
 import {
   GitHubLogoIcon,
   InstagramLogoIcon,

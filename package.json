@@ -10,7 +10,8 @@
     "test": "vitest",
     "cli:exec": "TS_NODE_PROJECT=tsconfig.cli.json ts-node -r tsconfig-paths/register cli/index.ts",
     "cli": "node scripts/dev-cli.js",
-    "scheduler": "TS_NODE_PROJECT=tsconfig.cli.json ts-node -r tsconfig-paths/register jobs/scheduler.ts"
+    "scheduler": "TS_NODE_PROJECT=tsconfig.cli.json ts-node -r tsconfig-paths/register jobs/scheduler.ts",
+    "prepare": "husky"
   },
   "dependencies": {
     "@google/generative-ai": "^0.24.1",
@@ -48,6 +49,7 @@
     "dotenv": "^17.3.1",
     "eslint": "^9",
     "eslint-config-next": "16.1.6",
+    "husky": "^9.1.7",
     "tailwindcss": "^4",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5",
