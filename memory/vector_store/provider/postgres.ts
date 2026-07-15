@@ -70,7 +70,7 @@ export class PostgresVectorStore {
     content: string,
     embedding: number[],
     metadata: Record<string, unknown> = {},
-    autoSave: boolean = true,
+    _autoSave: boolean = true,
   ): Promise<Document> {
     const db = getDb();
     const id = uuidv4();

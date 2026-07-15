@@ -114,8 +114,6 @@ export class MemoryRouter {
   }
 
   private detectIntentWithKeywords(query: string): ContextMode {
-    const lowerQuery = query.toLowerCase();
-
     const recruiterKeywords = [
       "hire",
       "hiring",
