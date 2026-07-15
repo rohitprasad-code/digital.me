@@ -50,6 +50,24 @@ describe("UnifiedRegistry", () => {
     expect(registry.getEmbeddingProvider("mock-embedding")).toBe(mockProvider);
   });
 
+  it("should throw error for unregistered Embedding provider", () => {
+    expect(() => registry.getEmbeddingProvider("non-existent")).toThrowError(
+      'Embedding provider "non-existent" is not registered in the Unified Registry.'
+    );
+  });
+
+  it("should clear the registry correctly", () => {
+    const mockLlm = new MockLLMProvider();
+    const mockEmbed = new MockEmbeddingProvider();
+    registry.registerLLMProvider("mock-llm", mockLlm);
+    registry.registerEmbeddingProvider("mock-embedding", mockEmbed);
+
+    registry.clear();
+
+    expect(registry.listLLMProviders().length).toBe(0);
+    expect(registry.listEmbeddingProviders().length).toBe(0);
+  });
+
   it("should register and retrieve Tools", () => {
     const mockTool: ToolDefinition = {
       name: "mock_tool",

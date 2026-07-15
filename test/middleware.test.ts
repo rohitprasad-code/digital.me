@@ -2,7 +2,7 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { MiddlewareLLMProvider } from "../model/middleware/middleware";
 import { createCacheMiddleware } from "../model/middleware/cache";
-import { createRateLimiterMiddleware } from "../model/middleware/rate_limiter";
+import { createRateLimiterMiddleware, totalCost, totalTokensUsed } from "../model/middleware/rate_limiter";
 import { createObservabilityMiddleware, activeTraces } from "../model/middleware/observability";
 import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "../model/providers/provider";
 
@@ -88,5 +88,38 @@ describe("Middleware Chain & Implementations", () => {
     await expect(
       provider.chat([{ role: "user", content: "second request" }])
     ).rejects.toThrowError(/Requests Per Minute/);
+  });
+
+  it("should enforce TPM (Tokens Per Minute) limits", async () => {
+    const limiter = createRateLimiterMiddleware({
+      maxTokensPerMinute: 10, // Very small token limit
+    });
+    const provider = new MiddlewareLLMProvider(mockBase, [limiter]);
+
+    // Send a long message to exceed the 10 token limit
+    // estimateTokens rounds up characters / 4
+    await expect(
+      provider.chat([{ role: "user", content: "This is a very long prompt that will exceed the token limit." }])
+    ).rejects.toThrowError(/Tokens Per Minute/);
+  });
+
+  it("should track totalCost and totalTokensUsed correctly", async () => {
+    const limiter = createRateLimiterMiddleware({
+      inputTokenCostPer1K: 2.0,
+      outputTokenCostPer1K: 4.0,
+    });
+    const provider = new MiddlewareLLMProvider(mockBase, [limiter]);
+
+    const initialCost = totalCost;
+    const initialTokens = totalTokensUsed;
+
+    // Send request: "hello" -> estimateTokens("hello") = Math.ceil(5 / 4) = 2 input tokens
+    // mockBase response: "response to: hello" -> estimateTokens("response to: hello") = Math.ceil(19 / 4) = 5 output tokens
+    // Expected total tokens = 2 + 5 = 7
+    // Expected cost = (2 * 2.0 + 5 * 4.0) / 1000 = (4.0 + 20.0) / 1000 = 0.024
+    await provider.chat([{ role: "user", content: "hello" }]);
+
+    expect(totalTokensUsed).toBe(initialTokens + 7);
+    expect(totalCost).toBeCloseTo(initialCost + 0.024, 5);
   });
 });
