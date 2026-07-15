@@ -7,11 +7,19 @@ export class EmbeddingPipeline {
   private vectorStore: VectorStore;
   private currentProvider: string;
   private seenContentHashes: Set<string>;
+  private allDocsCache: Document[] | null = null;
 
   constructor(vectorStore: VectorStore) {
     this.vectorStore = vectorStore;
     this.currentProvider = (process.env.LLM_PROVIDER || "ollama").toLowerCase();
     this.seenContentHashes = new Set<string>();
+  }
+
+  private async getAllDocs(): Promise<Document[]> {
+    if (!this.allDocsCache) {
+      this.allDocsCache = await this.vectorStore.getAllDocuments();
+    }
+    return this.allDocsCache;
   }
 
   /**
@@ -43,7 +51,7 @@ export class EmbeddingPipeline {
     };
 
     // Check if we already have this exact document embedded by the current provider
-    const allDocs = await this.vectorStore.getAllDocuments();
+    const allDocs = await this.getAllDocs();
     const existingProviderDocs = allDocs.filter((doc) => doc.metadata?._embeddedBy === this.currentProvider);
 
     const existingDoc = existingProviderDocs.find(
@@ -71,7 +79,11 @@ export class EmbeddingPipeline {
         content,
         embedding,
         enrichedMetadata,
+        false, // Defer save for batch ingestion
       );
+      if (newDoc && this.allDocsCache) {
+        this.allDocsCache.push(newDoc);
+      }
       return newDoc;
     } catch (error) {
       log.error(

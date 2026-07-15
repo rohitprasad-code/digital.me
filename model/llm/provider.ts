@@ -34,29 +34,42 @@ class FallbackLLMProvider implements LLMProvider {
   private providers: { name: string; getProvider: () => LLMProvider }[];
 
   constructor(preferredName: string) {
+    let groqInstance: LLMProvider | null = null;
+    let geminiInstance: LLMProvider | null = null;
+    let ollamaInstance: LLMProvider | null = null;
+
     const allProviders = [
       {
         name: "groq",
         getProvider: () => {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { GroqProvider } = require("./groq/client");
-          return new GroqProvider();
+          if (!groqInstance) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { GroqProvider } = require("./groq/client");
+            groqInstance = new GroqProvider();
+          }
+          return groqInstance;
         },
       },
       {
         name: "gemini",
         getProvider: () => {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { GeminiProvider } = require("./gemini/client");
-          return new GeminiProvider();
+          if (!geminiInstance) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { GeminiProvider } = require("./gemini/client");
+            geminiInstance = new GeminiProvider();
+          }
+          return geminiInstance;
         },
       },
       {
         name: "ollama",
         getProvider: () => {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { OllamaProvider } = require("./ollama/client");
-          return new OllamaProvider();
+          if (!ollamaInstance) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { OllamaProvider } = require("./ollama/client");
+            ollamaInstance = new OllamaProvider();
+          }
+          return ollamaInstance;
         },
       },
     ];

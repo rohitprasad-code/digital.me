@@ -65,7 +65,7 @@ export class MemoryRouter {
       "strava",
       "health",
     ];
-    if (dynamicKeywords.some((k) => lowerQuery.includes(k))) {
+    if (dynamicKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
       return MemoryType.DYNAMIC;
     }
 
@@ -161,10 +161,10 @@ export class MemoryRouter {
       "what do you do for fun",
     ];
 
-    if (recruiterKeywords.some((k) => lowerQuery.includes(k))) {
+    if (recruiterKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
       return "recruiter";
     }
-    if (socialKeywords.some((k) => lowerQuery.includes(k))) {
+    if (socialKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
       return "social";
     }
 

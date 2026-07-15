@@ -35,11 +35,12 @@ export class VectorStore implements IVectorStore {
     c: string,
     e: number[],
     m?: Record<string, unknown>,
+    autoSave?: boolean,
   ) {
-    return this.store.addDocumentWithEmbedding(c, e, m);
+    return this.store.addDocumentWithEmbedding(c, e, m, autoSave);
   }
-  async addDocument(c: string, m?: Record<string, unknown>) {
-    return this.store.addDocument(c, m);
+  async addDocument(c: string, m?: Record<string, unknown>, autoSave?: boolean) {
+    return this.store.addDocument(c, m, autoSave);
   }
   async search(q: string, l?: number) {
     return this.store.search(q, l);

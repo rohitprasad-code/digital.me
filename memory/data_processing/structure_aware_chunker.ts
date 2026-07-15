@@ -39,7 +39,9 @@ export class StructureAwareChunker {
 
   // Rough estimation: 1 token ≈ 0.75 words -> words / 0.75
   private estimateTokens(text: string): number {
-    const words = text.trim().split(/\s+/).length;
+    const trimmed = text.trim();
+    if (!trimmed) return 0;
+    const words = trimmed.split(/\s+/).length;
     return Math.ceil(words / 0.75);
   }
 

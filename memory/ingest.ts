@@ -126,6 +126,13 @@ async function ingest() {
   // await pipeline.cleanupStaleDocuments();
 
   try {
+    log.info("Saving vector store...");
+    await vectorStore.save();
+  } catch (err) {
+    log.error("Failed to save vector store", err instanceof Error ? err.message : String(err));
+  }
+
+  try {
     await mcpManager.close();
   } catch (err) {
     log.error("Failed to close MCP manager gracefully", err instanceof Error ? err.message : String(err));

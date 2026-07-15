@@ -10,6 +10,7 @@ import { Document } from "../types";
 export class JsonVectorStore {
   private documents: Document[] = [];
   private readonly storageFile: string;
+  private lastMTimeMs: number = 0;
 
   constructor(storageFile: string = "embedded_vectors.json") {
     this.storageFile = path.join(VECTOR_DIR, storageFile);
@@ -56,6 +57,7 @@ export class JsonVectorStore {
     content: string,
     embedding: number[],
     metadata: Record<string, unknown> = {},
+    autoSave: boolean = true,
   ): Promise<Document> {
     const contentHash =
       (metadata._contentHash as string) ||
@@ -86,7 +88,9 @@ export class JsonVectorStore {
       this.documents[existingIndex].lastUpdatedAt = strTimestamp;
       this.documents[existingIndex].metadata._lastUpdatedAt =
         metadata._lastUpdatedAt;
-      await this.save();
+      if (autoSave) {
+        await this.save();
+      }
       return this.documents[existingIndex];
     }
 
@@ -100,17 +104,20 @@ export class JsonVectorStore {
     };
 
     this.documents.push(doc);
-    await this.save();
+    if (autoSave) {
+      await this.save();
+    }
     return doc;
   }
 
   async addDocument(
     content: string,
     metadata: Record<string, unknown> = {},
+    autoSave: boolean = true,
   ): Promise<Document> {
     const embeddingProvider = getEmbeddingProvider();
     const embedding = await embeddingProvider.embed(content);
-    return this.addDocumentWithEmbedding(content, embedding, metadata);
+    return this.addDocumentWithEmbedding(content, embedding, metadata, autoSave);
   }
 
   async search(
@@ -138,6 +145,10 @@ export class JsonVectorStore {
         this.storageFile,
         JSON.stringify(this.documents, null, 2),
       );
+      const stats = await fs.stat(this.storageFile).catch(() => null);
+      if (stats) {
+        this.lastMTimeMs = stats.mtimeMs;
+      }
     } catch (error) {
       console.error("Failed to save vector store:", error);
     }
@@ -145,9 +156,23 @@ export class JsonVectorStore {
 
   async load(): Promise<void> {
     try {
+      const stats = await fs.stat(this.storageFile).catch(() => null);
+      if (!stats) {
+        console.log("Vector store file not found, starting empty.");
+        this.documents = [];
+        this.lastMTimeMs = 0;
+        return;
+      }
+
+      if (stats.mtimeMs <= this.lastMTimeMs && this.documents.length > 0) {
+        // Cached version is up to date, skip reading
+        return;
+      }
+
       console.log("Loading vector store from:", this.storageFile);
       const data = await fs.readFile(this.storageFile, "utf-8");
       this.documents = JSON.parse(data);
+      this.lastMTimeMs = stats.mtimeMs;
       console.log(`Loaded ${this.documents.length} local JSON documents.`);
     } catch (error: unknown) {
       if (
@@ -158,6 +183,7 @@ export class JsonVectorStore {
       ) {
         console.log("Vector store file not found, starting empty.");
         this.documents = [];
+        this.lastMTimeMs = 0;
       } else {
         console.error("Failed to load vector store:", error);
         throw error;

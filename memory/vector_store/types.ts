@@ -16,10 +16,12 @@ export interface IVectorStore {
     content: string,
     embedding: number[],
     metadata?: Record<string, unknown>,
+    autoSave?: boolean,
   ): Promise<Document>;
   addDocument(
     content: string,
     metadata?: Record<string, unknown>,
+    autoSave?: boolean,
   ): Promise<Document>;
   search(
     query: string,

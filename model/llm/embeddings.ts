@@ -6,29 +6,42 @@ class FallbackEmbeddingProvider implements EmbeddingProvider {
   private providers: { name: string; getProvider: () => EmbeddingProvider }[];
 
   constructor(preferredName: string) {
+    let groqInstance: EmbeddingProvider | null = null;
+    let geminiInstance: EmbeddingProvider | null = null;
+    let ollamaInstance: EmbeddingProvider | null = null;
+
     const allProviders = [
       {
         name: "groq",
         getProvider: () => {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { GroqEmbeddingProvider } = require("./groq/client");
-          return new GroqEmbeddingProvider();
+          if (!groqInstance) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { GroqEmbeddingProvider } = require("./groq/client");
+            groqInstance = new GroqEmbeddingProvider();
+          }
+          return groqInstance;
         },
       },
       {
         name: "gemini",
         getProvider: () => {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { GeminiEmbeddingProvider } = require("./gemini/client");
-          return new GeminiEmbeddingProvider();
+          if (!geminiInstance) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { GeminiEmbeddingProvider } = require("./gemini/client");
+            geminiInstance = new GeminiEmbeddingProvider();
+          }
+          return geminiInstance;
         },
       },
       {
         name: "ollama",
         getProvider: () => {
-          // eslint-disable-next-line @typescript-eslint/no-require-imports
-          const { OllamaEmbeddingProvider } = require("./ollama/client");
-          return new OllamaEmbeddingProvider();
+          if (!ollamaInstance) {
+            // eslint-disable-next-line @typescript-eslint/no-require-imports
+            const { OllamaEmbeddingProvider } = require("./ollama/client");
+            ollamaInstance = new OllamaEmbeddingProvider();
+          }
+          return ollamaInstance;
         },
       },
     ];

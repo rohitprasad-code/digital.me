@@ -70,6 +70,7 @@ export class PostgresVectorStore {
     content: string,
     embedding: number[],
     metadata: Record<string, unknown> = {},
+    autoSave: boolean = true,
   ): Promise<Document> {
     const db = getDb();
     const id = uuidv4();
@@ -116,10 +117,11 @@ export class PostgresVectorStore {
   async addDocument(
     content: string,
     metadata: Record<string, unknown> = {},
+    autoSave: boolean = true,
   ): Promise<Document> {
     const embeddingProvider = getEmbeddingProvider();
     const embedding = await embeddingProvider.embed(content);
-    return this.addDocumentWithEmbedding(content, embedding, metadata);
+    return this.addDocumentWithEmbedding(content, embedding, metadata, autoSave);
   }
 
   async search(
