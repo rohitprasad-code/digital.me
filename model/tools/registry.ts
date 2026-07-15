@@ -1,6 +1,7 @@
 import { ToolDefinition, ToolParameters } from "./types";
 import { McpClientManager } from "../../utils/mcp_client";
 import { log } from "../../utils/logger";
+import { registry } from "../registry";
 
 export const mcpManager = new McpClientManager();
 
@@ -29,6 +30,9 @@ export async function initializeMcpTools() {
     const clients = mcpManager.getClients();
     for (const [serverName, client] of clients.entries()) {
       try {
+        // Register the MCP Client in the Unified Registry
+        registry.registerMcpClient(serverName, client);
+
         const response = await client.listTools();
         for (const tool of response.tools) {
           // Namespace tools to prevent name collisions
@@ -49,6 +53,9 @@ export async function initializeMcpTools() {
 
           allToolDefinitions.push(definition);
           TOOL_MAP[namespacedName] = definition.execute;
+
+          // Register in the Unified Registry
+          registry.registerTool(namespacedName, definition);
 
           toolSchemas.push({
             type: "function" as const,

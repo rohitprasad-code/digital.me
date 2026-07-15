@@ -1,10 +1,11 @@
 import { LLMProvider } from "./llm/provider";
 import { EmbeddingProvider } from "./llm/embeddings";
 import { ToolDefinition } from "./tools/types";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 export interface RegistryNode {
   id: string;
-  type: "llm" | "embedding" | "tool";
+  type: "llm" | "embedding" | "tool" | "mcp";
 }
 
 export class UnifiedRegistry {
@@ -12,6 +13,7 @@ export class UnifiedRegistry {
   private llmProviders = new Map<string, LLMProvider>();
   private embeddingProviders = new Map<string, EmbeddingProvider>();
   private tools = new Map<string, ToolDefinition>();
+  private mcpClients = new Map<string, Client>();
 
   private constructor() {}
 
@@ -69,10 +71,24 @@ export class UnifiedRegistry {
     return Array.from(this.tools.values());
   }
 
+  // MCP Clients
+  public registerMcpClient(name: string, client: Client): void {
+    this.mcpClients.set(name, client);
+  }
+
+  public getMcpClient(name: string): Client | undefined {
+    return this.mcpClients.get(name);
+  }
+
+  public listMcpClients(): string[] {
+    return Array.from(this.mcpClients.keys());
+  }
+
   public clear(): void {
     this.llmProviders.clear();
     this.embeddingProviders.clear();
     this.tools.clear();
+    this.mcpClients.clear();
   }
 }
 

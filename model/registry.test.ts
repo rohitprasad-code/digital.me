@@ -66,4 +66,13 @@ describe("UnifiedRegistry", () => {
     expect(registry.getTool("mock_tool")).toBe(mockTool);
     expect(registry.listTools()).toContain(mockTool);
   });
+
+  it("should register and retrieve MCP clients", () => {
+    // Mock the MCP Client
+    const mockClient = {} as any;
+    registry.registerMcpClient("mock-server", mockClient);
+
+    expect(registry.listMcpClients()).toContain("mock-server");
+    expect(registry.getMcpClient("mock-server")).toBe(mockClient);
+  });
 });
