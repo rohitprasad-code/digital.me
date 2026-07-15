@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, beforeEach } from "vitest";
 import { registry } from "./registry";
 import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "./llm/provider";
