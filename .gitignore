@@ -12,7 +12,7 @@
 
 # testing
 /coverage
-*.test.ts
+# *.test.ts
 
 # next.js
 /.next/

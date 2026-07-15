@@ -47,7 +47,7 @@ class FallbackLLMProvider implements LLMProvider {
             const { GroqProvider } = require("./groq/client");
             groqInstance = new GroqProvider();
           }
-          return groqInstance;
+          return groqInstance as LLMProvider;
         },
       },
       {
@@ -58,7 +58,7 @@ class FallbackLLMProvider implements LLMProvider {
             const { GeminiProvider } = require("./gemini/client");
             geminiInstance = new GeminiProvider();
           }
-          return geminiInstance;
+          return geminiInstance as LLMProvider;
         },
       },
       {
@@ -69,7 +69,7 @@ class FallbackLLMProvider implements LLMProvider {
             const { OllamaProvider } = require("./ollama/client");
             ollamaInstance = new OllamaProvider();
           }
-          return ollamaInstance;
+          return ollamaInstance as LLMProvider;
         },
       },
     ];

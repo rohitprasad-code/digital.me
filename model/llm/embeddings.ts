@@ -13,35 +13,35 @@ class FallbackEmbeddingProvider implements EmbeddingProvider {
     const allProviders = [
       {
         name: "groq",
-        getProvider: () => {
+        getProvider: (): EmbeddingProvider => {
           if (!groqInstance) {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const { GroqEmbeddingProvider } = require("./groq/client");
             groqInstance = new GroqEmbeddingProvider();
           }
-          return groqInstance;
+          return groqInstance!;
         },
       },
       {
         name: "gemini",
-        getProvider: () => {
+        getProvider: (): EmbeddingProvider => {
           if (!geminiInstance) {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const { GeminiEmbeddingProvider } = require("./gemini/client");
             geminiInstance = new GeminiEmbeddingProvider();
           }
-          return geminiInstance;
+          return geminiInstance!;
         },
       },
       {
         name: "ollama",
-        getProvider: () => {
+        getProvider: (): EmbeddingProvider => {
           if (!ollamaInstance) {
             // eslint-disable-next-line @typescript-eslint/no-require-imports
             const { OllamaEmbeddingProvider } = require("./ollama/client");
             ollamaInstance = new OllamaEmbeddingProvider();
           }
-          return ollamaInstance;
+          return ollamaInstance!;
         },
       },
     ];
