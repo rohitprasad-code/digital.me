@@ -1,5 +1,5 @@
 import { ChatMiddleware } from "./middleware";
-import { ChatResponse } from "./provider";
+import { ChatResponse } from "../providers/provider";
 import crypto from "crypto";
 
 export function createCacheMiddleware(): ChatMiddleware {

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
-import { getLLMProvider } from "@/model/llm/provider";
+import { getLLMProvider } from "@/model/providers/provider";
 import {
   getSystemPrompt,
   ContextMode,
@@ -7,7 +7,7 @@ import {
 } from "@/model/prompts/core";
 import { VectorStore } from "@/memory/vector_store";
 import { MemoryRouter } from "@/memory/router";
-import { runAgentLoop } from "@/model/tools/agent";
+import { runAgentLoop } from "@/model/agents/groq_agent";
 
 const vectorStore = new VectorStore();
 const router = new MemoryRouter();

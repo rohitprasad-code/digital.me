@@ -1,6 +1,6 @@
 import crypto from "crypto";
 import { VectorStore, Document } from "../memory/vector_store";
-import { getEmbeddingProvider } from "../model/llm/embeddings";
+import { getEmbeddingProvider } from "../model/providers/embeddings";
 import { log } from "../utils/logger";
 
 export class EmbeddingPipeline {

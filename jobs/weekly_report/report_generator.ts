@@ -1,7 +1,7 @@
 import fs from "fs";
 import path from "path";
 import { WEEKLY_REPORT_PROMPT } from "../../model/prompts/weekly_report";
-import { getLLMProvider } from "../../model/llm/provider";
+import { getLLMProvider } from "../../model/providers/provider";
 import { log } from "../../utils/logger";
 import { REPORTS_DIR } from "../../utils/paths";
 import { VectorStore } from "../../memory/vector_store";

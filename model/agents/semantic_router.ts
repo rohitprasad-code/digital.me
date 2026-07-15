@@ -1,5 +1,5 @@
-import { getEmbeddingProvider } from "./embeddings";
-import { getLLMProvider, LLMProvider } from "./provider";
+import { getEmbeddingProvider } from "../providers/embeddings";
+import { getLLMProvider, LLMProvider } from "../providers/provider";
 import computeCosineSimilarity from "compute-cosine-similarity";
 
 export interface SemanticRoute {

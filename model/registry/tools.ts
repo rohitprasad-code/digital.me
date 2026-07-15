@@ -1,7 +1,7 @@
 import { ToolDefinition, ToolParameters } from "./types";
 import { McpClientManager } from "../../utils/mcp_client";
 import { log } from "../../utils/logger";
-import { registry } from "../registry";
+import { registry } from "./unified";
 
 export const mcpManager = new McpClientManager();
 

@@ -1,6 +1,6 @@
-import { LLMProvider } from "./llm/provider";
-import { EmbeddingProvider } from "./llm/embeddings";
-import { ToolDefinition } from "./tools/types";
+import { LLMProvider } from "../providers/provider";
+import { EmbeddingProvider } from "../providers/embeddings";
+import { ToolDefinition } from "./types";
 import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 export interface RegistryNode {

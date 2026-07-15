@@ -8,7 +8,7 @@
  *   3. Repeats until the LLM produces a final text response
  */
 
-import { TOOL_MAP, toolSchemas, initializeMcpTools, isInitialized } from "./registry";
+import { TOOL_MAP, toolSchemas, initializeMcpTools, isInitialized } from "../registry/tools";
 import Groq from "groq-sdk";
 import type {
   ChatCompletionMessageParam,

@@ -2,7 +2,7 @@ import path from "path";
 import fs from "fs";
 import { log } from "../utils/logger";
 import { VectorStore } from "./vector_store/index";
-import { initializeMcpTools, mcpManager, isInitialized } from "../model/tools/registry";
+import { initializeMcpTools, mcpManager, isInitialized } from "../model/registry/tools";
 import {
   crawlDirectory,
   determineFileRole,

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, beforeEach } from "vitest";
-import { runAgentLoop } from "./agent_loop";
-import { registry } from "../registry";
-import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "./provider";
+import { runAgentLoop } from "../model/agents/json_agent";
+import { registry } from "../model/registry/unified";
+import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "../model/providers/provider";
 
 class MockAgentLLM implements LLMProvider {
   private callCount = 0;

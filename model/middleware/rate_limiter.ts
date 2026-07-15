@@ -7,6 +7,9 @@ export interface RateLimiterOptions {
   outputTokenCostPer1K?: number;
 }
 
+let totalCost = 0;
+let totalTokensUsed = 0;
+
 export function createRateLimiterMiddleware(options: RateLimiterOptions = {}): ChatMiddleware {
   const maxTPM = options.maxTokensPerMinute || 50000;
   const maxRPM = options.maxRequestsPerMinute || 100;
@@ -15,8 +18,6 @@ export function createRateLimiterMiddleware(options: RateLimiterOptions = {}): C
 
   let requestTimestamps: number[] = [];
   let tokenTransactions: { timestamp: number; tokens: number }[] = [];
-  let totalCost = 0;
-  let totalTokensUsed = 0;
 
   const estimateTokens = (text: string): number => {
     return Math.ceil(text.length / 4);

@@ -1,9 +1,9 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, beforeEach } from "vitest";
-import { registry } from "./registry";
-import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "./llm/provider";
-import { EmbeddingProvider } from "./llm/embeddings";
-import { ToolDefinition } from "./tools/types";
+import { registry } from "../model/registry/unified";
+import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "../model/providers/provider";
+import { EmbeddingProvider } from "../model/providers/embeddings";
+import { ToolDefinition } from "../model/registry/types";
 
 // Mock providers for testing
 class MockLLMProvider implements LLMProvider {

@@ -1,8 +1,8 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { SemanticRouter } from "./semantic_router";
-import * as embeddings from "./embeddings";
-import * as provider from "./provider";
+import { SemanticRouter } from "../model/agents/semantic_router";
+import * as embeddings from "../model/providers/embeddings";
+import * as provider from "../model/providers/provider";
 
 // Simple helper to create mock vectors
 const mockVectors: Record<string, number[]> = {

@@ -2,7 +2,7 @@ import fs from "fs/promises";
 import path from "path";
 import { log } from "../../../utils/logger";
 import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
-import { getLLMProvider } from "../../../model/llm/provider";
+import { getLLMProvider } from "../../../model/providers/provider";
 import { processDocument } from "../index";
 
 import { PDFParse } from "pdf-parse";

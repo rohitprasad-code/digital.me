@@ -1,5 +1,5 @@
-import { LLMProvider, ChatMessage } from "./provider";
-import { registry } from "../registry";
+import { LLMProvider, ChatMessage } from "../providers/provider";
+import { registry } from "../registry/unified";
 
 const MAX_ROUNDS = 5;
 

@@ -4,7 +4,7 @@ import * as cheerio from "cheerio";
 import { log } from "../../../utils/logger";
 import { EmbeddingPipeline } from "../../../jobs/embedding_pipeline";
 import { processDocument } from "../index";
-import { getLLMProvider } from "../../../model/llm/provider";
+import { getLLMProvider } from "../../../model/providers/provider";
 
 export class HtmlParser {
   /**

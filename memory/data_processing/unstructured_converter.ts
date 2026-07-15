@@ -1,4 +1,4 @@
-import { getLLMProvider } from "../../model/llm/provider";
+import { getLLMProvider } from "../../model/providers/provider";
 
 export interface StructuredData {
   title: string;

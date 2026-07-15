@@ -1,10 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MiddlewareLLMProvider } from "./middleware";
-import { createCacheMiddleware } from "./cache_middleware";
-import { createRateLimiterMiddleware } from "./rate_limiter_middleware";
-import { createObservabilityMiddleware, activeTraces } from "./observability_middleware";
-import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "./provider";
+import { MiddlewareLLMProvider } from "../model/middleware/middleware";
+import { createCacheMiddleware } from "../model/middleware/cache";
+import { createRateLimiterMiddleware } from "../model/middleware/rate_limiter";
+import { createObservabilityMiddleware, activeTraces } from "../model/middleware/observability";
+import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "../model/providers/provider";
 
 class MockBaseProvider implements LLMProvider {
   chatCalls = 0;

@@ -1,5 +1,5 @@
 import { NextRequest } from "next/server";
-import { initializeMcpTools, allToolDefinitions, TOOL_MAP, isInitialized } from "@/model/tools/registry";
+import { initializeMcpTools, allToolDefinitions, TOOL_MAP, isInitialized } from "@/model/registry/tools";
 
 export async function GET() {
   try {

@@ -1,4 +1,4 @@
-import { getEmbeddingProvider } from "@/model/llm/embeddings";
+import { getEmbeddingProvider } from "@/model/providers/embeddings";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 import postgres from "postgres";
