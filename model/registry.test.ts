@@ -6,17 +6,17 @@ import { ToolDefinition } from "./tools/types";
 
 // Mock providers for testing
 class MockLLMProvider implements LLMProvider {
-  async chat(messages: ChatMessage[], options?: ChatOptions): Promise<ChatResponse> {
+  async chat(_messages: ChatMessage[], _options?: ChatOptions): Promise<ChatResponse> {
     return { content: "mock response" };
   }
-  async *chatStream(messages: ChatMessage[], options?: ChatOptions): AsyncIterable<string> {
+  async *chatStream(_messages: ChatMessage[], _options?: ChatOptions): AsyncIterable<string> {
     yield "mock stream";
   }
   async healthCheck(): Promise<void> {}
 }
 
 class MockEmbeddingProvider implements EmbeddingProvider {
-  async embed(text: string): Promise<number[]> {
+  async embed(_text: string): Promise<number[]> {
     return [0.1, 0.2, 0.3];
   }
 }
