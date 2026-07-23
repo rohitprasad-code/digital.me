@@ -73,7 +73,7 @@ describe("Middleware Chain & Implementations", () => {
     expect(activeTraces.length).toBe(1);
     expect(activeTraces[0].messages[0].content).toBe("observability test");
     expect(activeTraces[0].durationMs).toBeGreaterThanOrEqual(0);
-    expect(activeTraces[0].response.content).toBe("response to: observability test");
+    expect(activeTraces[0].response?.content).toBe("response to: observability test");
   });
 
   it("should enforce rate limits and track cost", async () => {
