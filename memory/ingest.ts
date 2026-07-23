@@ -103,7 +103,7 @@ async function ingest() {
 
                 if (result && typeof result === "object" && "content" in result) {
                   const content = (result as Record<string, unknown>).content;
-                  const { contentText, rawData } = transformMcpDataToNarrative(content, serverName, task.tool);
+                  const { contentText, rawData } = transformMcpDataToNarrative(content, serverName, task.tool, task);
                   await pipeline.syncDocument(contentText, {
                     source: `mcp:${serverName}:${task.source}`,
                     title: task.title || `${serverName} ${task.tool}`,

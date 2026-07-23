@@ -11,75 +11,70 @@ export async function generateWeeklyReport(): Promise<string> {
 
   // 1. Collect Data from Vector Store (previously saved from MCP sync)
   const vectorStore = new VectorStore();
-  let githubData = null;
-  let stravaData = null;
+  const mcpData: Record<string, any> = {};
 
   try {
     await vectorStore.load();
     const allDocs = await vectorStore.getAllDocuments();
 
-    // Process GitHub data
-    const githubDocs = allDocs.filter(
+    // Collect and group all MCP documents
+    const mcpDocs = allDocs.filter(
       (d) =>
         typeof d.metadata?.source === "string" &&
-        d.metadata.source.startsWith("mcp:github"),
+        d.metadata.source.startsWith("mcp:"),
     );
-    let githubMerged: Record<string, unknown> & { activities?: unknown[] } = {};
-    for (const doc of githubDocs) {
+
+    for (const doc of mcpDocs) {
+      const parts = doc.metadata.source.split(":");
+      const sourceName = parts[1]; // e.g. "github" or "strava"
+      
+      if (!mcpData[sourceName]) {
+        mcpData[sourceName] = { activities: [] };
+      }
+
       try {
         const rawContent = (doc.metadata?.rawData as string) || doc.content;
         const parsed = JSON.parse(rawContent);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          githubMerged = { ...githubMerged, ...(parsed as Record<string, unknown>) };
+
+        if (parsed && typeof parsed === "object") {
+          if (Array.isArray(parsed)) {
+            mcpData[sourceName].activities = [...mcpData[sourceName].activities, ...parsed];
+          } else {
+            // Merge profile/settings or lists of items
+            const parsedActivities = Array.isArray(parsed.activities) ? parsed.activities : [];
+            const otherFields = { ...parsed };
+            delete otherFields.activities;
+
+            mcpData[sourceName] = {
+              ...mcpData[sourceName],
+              ...otherFields,
+              activities: [...mcpData[sourceName].activities, ...parsedActivities],
+            };
+          }
         }
       } catch {
-        // Not JSON content, skip or log
-      }
-    }
-    if (Object.keys(githubMerged).length > 0) {
-      if (githubMerged.activities && Array.isArray(githubMerged.activities)) {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentActivity = (githubMerged.activities as Array<{ created_at: string }>).filter(
-          (event: { created_at: string }) => new Date(event.created_at) >= sevenDaysAgo,
-        );
-        githubData = { recentActivities: recentActivity.length, ...githubMerged };
-      } else {
-        githubData = githubMerged;
+        // Not JSON content, add as basic activity text
+        mcpData[sourceName].activities.push({ text: doc.content });
       }
     }
 
-    // Process Strava data
-    const stravaDocs = allDocs.filter(
-      (d) =>
-        typeof d.metadata?.source === "string" &&
-        d.metadata.source.startsWith("mcp:strava"),
-    );
-    let stravaMerged: Record<string, unknown> & { activities?: unknown[] } = {};
-    for (const doc of stravaDocs) {
-      try {
-        const rawContent = (doc.metadata?.rawData as string) || doc.content;
-        const parsed = JSON.parse(rawContent);
-        if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
-          stravaMerged = { ...stravaMerged, ...(parsed as Record<string, unknown>) };
-        }
-      } catch {
-        // Not JSON content, skip or log
-      }
-    }
-    if (Object.keys(stravaMerged).length > 0) {
-      if (stravaMerged.activities && Array.isArray(stravaMerged.activities)) {
-        const sevenDaysAgo = new Date();
-        sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-        const recentActivities = (stravaMerged.activities as Array<{ start_date: string }>).filter(
-          (a: { start_date: string }) => new Date(a.start_date) >= sevenDaysAgo,
-        );
-        stravaData = {
-          recentActivitiesCount: recentActivities.length,
-          ...stravaMerged,
+    // Filter recent activities in the generic mcpData structure
+    const sevenDaysAgo = new Date();
+    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+
+    for (const sourceName of Object.keys(mcpData)) {
+      const data = mcpData[sourceName];
+      if (data.activities && Array.isArray(data.activities) && data.activities.length > 0) {
+        const recent = data.activities.filter((act: any) => {
+          const dateStr = act.start_date || act.created_at || act.date || act.updated_at;
+          if (!dateStr) return true; // Keep if no date found
+          return new Date(dateStr) >= sevenDaysAgo;
+        });
+        mcpData[sourceName] = {
+          ...data,
+          recentActivitiesCount: recent.length,
+          activities: recent,
         };
-      } else {
-        stravaData = stravaMerged;
       }
     }
   } catch (error) {
@@ -89,17 +84,24 @@ export async function generateWeeklyReport(): Promise<string> {
     );
   }
 
-  const rawData = JSON.stringify(
-    {
-      github: githubData,
-      strava: stravaData,
-    },
-    null,
-    2,
-  );
+  // Load name dynamically from me.json
+  let name = "Rohit";
+  try {
+    const mePath = path.resolve(process.cwd(), "public/codes/me.json");
+    if (fs.existsSync(mePath)) {
+      const meConfig = JSON.parse(fs.readFileSync(mePath, "utf-8"));
+      if (meConfig.profile?.name) {
+        name = meConfig.profile.name.split(" ")[0];
+      }
+    }
+  } catch (e) {
+    // Fall back silently
+  }
+
+  const rawData = JSON.stringify(mcpData, null, 2);
 
   // 2. Generate Report via LLM
-  const prompt = WEEKLY_REPORT_PROMPT.replace("{{data}}", rawData);
+  const prompt = WEEKLY_REPORT_PROMPT.replace("of Rohit", `of ${name}`).replace("{{data}}", rawData);
   const llm = getLLMProvider();
 
   log.info("Calling LLM to synthesize report...");

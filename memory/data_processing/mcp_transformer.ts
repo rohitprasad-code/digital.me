@@ -20,10 +20,47 @@ interface StravaActivity {
   start_date?: string;
 }
 
+function renderTemplate(template: string, item: any): string {
+  return template.replace(/\{([^}]+)\}/g, (match, expression) => {
+    const [expr, formatter] = expression.split(":");
+    const keys = expr.trim().split(".");
+    let value = item;
+    for (const key of keys) {
+      if (value && typeof value === "object") {
+        value = value[key];
+      } else {
+        value = undefined;
+        break;
+      }
+    }
+
+    if (value === undefined || value === null) {
+      return "";
+    }
+
+    if (formatter === "km") {
+      return `${(Number(value) / 1000).toFixed(2)} km`;
+    }
+    if (formatter === "min") {
+      return `${Math.round(Number(value) / 60)} minutes`;
+    }
+    if (formatter === "date") {
+      try {
+        return new Date(value).toLocaleDateString();
+      } catch {
+        return String(value);
+      }
+    }
+
+    return String(value);
+  });
+}
+
 export function transformMcpDataToNarrative(
   content: any,
   serverName: string,
-  toolName: string
+  toolName: string,
+  config?: { itemTemplate?: string; narrativeTemplate?: string }
 ): { contentText: string; rawData: string } {
   const rawData = typeof content === "string" ? content : JSON.stringify(content);
   let parsed: any = content;
@@ -41,7 +78,37 @@ export function transformMcpDataToNarrative(
     return { contentText: String(content), rawData };
   }
 
-  // Handle GitHub Repositories
+  // Schema-driven dynamic template formatting
+  if (config) {
+    if (config.itemTemplate) {
+      const items = Array.isArray(parsed)
+        ? parsed
+        : Array.isArray(parsed.items)
+        ? parsed.items
+        : Array.isArray(parsed.repositories)
+        ? parsed.repositories
+        : Array.isArray(parsed.activities)
+        ? parsed.activities
+        : null;
+
+      if (items && items.length > 0) {
+        const narrativeLines = items.map((item) => renderTemplate(config.itemTemplate!, item));
+        return {
+          contentText: `${serverName.toUpperCase()} Data:\n${narrativeLines.join("\n")}`,
+          rawData,
+        };
+      }
+    }
+
+    if (config.narrativeTemplate) {
+      return {
+        contentText: renderTemplate(config.narrativeTemplate, parsed),
+        rawData,
+      };
+    }
+  }
+
+  // Fallback: Hardcoded mappings for GitHub Repositories
   if (serverName === "github" && (toolName === "list_repositories" || toolName === "get_repositories")) {
     const repos: GitHubRepo[] = Array.isArray(parsed)
       ? parsed
@@ -64,7 +131,7 @@ export function transformMcpDataToNarrative(
     }
   }
 
-  // Handle Strava Activities
+  // Fallback: Hardcoded mappings for Strava Activities
   if (serverName === "strava" && (toolName === "get_activities" || toolName === "get_recent_activities" || toolName === "get_recent_activities_all")) {
     const activities: StravaActivity[] = Array.isArray(parsed)
       ? parsed

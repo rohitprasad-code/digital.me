@@ -1,3 +1,5 @@
+import fs from "fs";
+import path from "path";
 import { getLLMProvider } from "@/model/providers/provider";
 import { ContextMode } from "@/model/prompts/core";
 
@@ -9,9 +11,102 @@ export enum MemoryType {
 
 export class MemoryRouter {
   private useLLM: boolean;
+  private config: {
+    conversationalKeywords: string[];
+    dynamicKeywords: string[];
+    recruiterKeywords: string[];
+    socialKeywords: string[];
+  };
 
   constructor(useLLM: boolean = false) {
     this.useLLM = useLLM;
+    this.config = this.loadConfig();
+  }
+
+  private loadConfig() {
+    const defaultKeywords = {
+      conversationalKeywords: [
+        "hi",
+        "hello",
+        "hey",
+        "how are you",
+        "good morning",
+        "good evening",
+        "thanks",
+        "thank you",
+      ],
+      dynamicKeywords: [
+        "run",
+        "running",
+        "ran",
+        "swim",
+        "swimming",
+        "swam",
+        "bike",
+        "biking",
+        "cycled",
+        "activity",
+        "workout",
+        "heart rate",
+        "pace",
+        "calories",
+        "strava",
+        "health",
+      ],
+      recruiterKeywords: [
+        "hire",
+        "hiring",
+        "resume",
+        "cv",
+        "experience",
+        "salary",
+        "job",
+        "interview",
+        "portfolio",
+        "skills",
+        "work history",
+        "position",
+        "technical",
+        "tech stack",
+        "qualifications",
+        "candidate",
+        "role",
+        "company",
+        "years of experience",
+      ],
+      socialKeywords: [
+        "hobby",
+        "hobbies",
+        "fun",
+        "weekend",
+        "travel",
+        "trip",
+        "personal",
+        "friend",
+        "life",
+        "interests",
+        "free time",
+        "hang out",
+        "favorite",
+        "movie",
+        "music",
+        "book",
+        "food",
+        "vibe",
+        "chill",
+        "what do you do for fun",
+      ],
+    };
+
+    try {
+      const configPath = path.resolve(process.cwd(), "public/codes/router_config.json");
+      if (fs.existsSync(configPath)) {
+        return JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      }
+    } catch (e) {
+      console.warn("Failed to load router config, using defaults", e);
+    }
+    return defaultKeywords;
   }
 
   // ---------- Memory routing (which store to search) ----------
@@ -27,45 +122,15 @@ export class MemoryRouter {
   private async routeWithKeywords(query: string): Promise<MemoryType> {
     const lowerQuery = query.toLowerCase().trim();
 
-    // Conversational keywords
-    const conversationalKeywords = [
-      "hi",
-      "hello",
-      "hey",
-      "how are you",
-      "good morning",
-      "good evening",
-      "thanks",
-      "thank you",
-    ];
     if (
-      conversationalKeywords.some(
+      this.config.conversationalKeywords.some(
         (k) => new RegExp(`\\b${k}\\b`, "i").test(query) || lowerQuery.startsWith(k)
       )
     ) {
       return MemoryType.CONVERSATIONAL;
     }
 
-    // Dynamic memory keywords (Strava, Health, etc.)
-    const dynamicKeywords = [
-      "run",
-      "running",
-      "ran",
-      "swim",
-      "swimming",
-      "swam",
-      "bike",
-      "biking",
-      "cycled",
-      "activity",
-      "workout",
-      "heart rate",
-      "pace",
-      "calories",
-      "strava",
-      "health",
-    ];
-    if (dynamicKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
+    if (this.config.dynamicKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
       return MemoryType.DYNAMIC;
     }
 
@@ -114,55 +179,10 @@ export class MemoryRouter {
   }
 
   private detectIntentWithKeywords(query: string): ContextMode {
-    const recruiterKeywords = [
-      "hire",
-      "hiring",
-      "resume",
-      "cv",
-      "experience",
-      "salary",
-      "job",
-      "interview",
-      "portfolio",
-      "skills",
-      "work history",
-      "position",
-      "technical",
-      "tech stack",
-      "qualifications",
-      "candidate",
-      "role",
-      "company",
-      "years of experience",
-    ];
-
-    const socialKeywords = [
-      "hobby",
-      "hobbies",
-      "fun",
-      "weekend",
-      "travel",
-      "trip",
-      "personal",
-      "friend",
-      "life",
-      "interests",
-      "free time",
-      "hang out",
-      "favorite",
-      "movie",
-      "music",
-      "book",
-      "food",
-      "vibe",
-      "chill",
-      "what do you do for fun",
-    ];
-
-    if (recruiterKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
+    if (this.config.recruiterKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
       return "recruiter";
     }
-    if (socialKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
+    if (this.config.socialKeywords.some((k) => new RegExp(`\\b${k}\\b`, "i").test(query))) {
       return "social";
     }
 

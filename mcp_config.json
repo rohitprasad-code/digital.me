@@ -20,7 +20,8 @@
           "tool": "get_activities",
           "args": { "limit": 10 },
           "source": "activities",
-          "title": "Recent Activities"
+          "title": "Recent Activities",
+          "itemTemplate": "I completed a Strava {type} named \"{name}\" covering {distance:km} in {moving_time:min} with an average heart rate of {average_heartrate} bpm on {start_date:date}."
         }
       ]
     },
@@ -36,7 +37,8 @@
           "tool": "list_repositories",
           "args": {},
           "source": "repos",
-          "title": "GitHub Repositories"
+          "title": "GitHub Repositories",
+          "itemTemplate": "I have a GitHub repository named \"{name}\" described as \"{description}\", primarily written in {language}. It has {stargazers_count} stars (last updated on {updated_at:date}). URL: {html_url}"
         }
       ]
     },
