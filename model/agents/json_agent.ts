@@ -44,10 +44,10 @@ When you have the final answer, output it directly without using the JSON block.
       return content;
     }
 
-    let toolCall: { tool: string; arguments: Record<string, any> };
+    let toolCall: { tool: string; arguments: Record<string, unknown> };
     try {
       toolCall = JSON.parse(jsonMatch[1]);
-    } catch (e) {
+    } catch {
       messages.push({ role: "assistant", content });
       messages.push({
         role: "user",

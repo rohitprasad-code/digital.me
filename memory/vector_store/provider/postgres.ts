@@ -70,8 +70,9 @@ export class PostgresVectorStore {
     content: string,
     embedding: number[],
     metadata: Record<string, unknown> = {},
-    _autoSave: boolean = true,
+    _autoSave?: boolean,
   ): Promise<Document> {
+    void _autoSave;
     const db = getDb();
     const id = uuidv4();
     const contentHash =

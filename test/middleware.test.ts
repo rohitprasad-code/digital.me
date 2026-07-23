@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 import { describe, it, expect, vi, beforeEach } from "vitest";
-import { MiddlewareLLMProvider } from "../model/middleware/middleware";
+import { MiddlewareLLMProvider, NextFn } from "../model/middleware/middleware";
 import { createCacheMiddleware } from "../model/middleware/cache";
 import { createRateLimiterMiddleware, totalCost, totalTokensUsed } from "../model/middleware/rate_limiter";
 import { createObservabilityMiddleware, activeTraces } from "../model/middleware/observability";
@@ -29,14 +29,14 @@ describe("Middleware Chain & Implementations", () => {
   it("should chain multiple middlewares in sequence", async () => {
     const order: number[] = [];
 
-    const mw1 = async (messages: ChatMessage[], options: ChatOptions | undefined, next: any) => {
+    const mw1 = async (messages: ChatMessage[], options: ChatOptions | undefined, next: NextFn) => {
       order.push(1);
       const res = await next(messages, options);
       order.push(4);
       return res;
     };
 
-    const mw2 = async (messages: ChatMessage[], options: ChatOptions | undefined, next: any) => {
+    const mw2 = async (messages: ChatMessage[], options: ChatOptions | undefined, next: NextFn) => {
       order.push(2);
       const res = await next(messages, options);
       order.push(3);

@@ -1,12 +1,13 @@
+import { ChatMessage, ChatOptions, ChatResponse } from "../providers/provider";
 import { ChatMiddleware } from "./middleware";
 
 export interface TraceSpan {
   id: string;
   timestamp: string;
   durationMs: number;
-  messages: any[];
-  options?: any;
-  response?: any;
+  messages: ChatMessage[];
+  options?: ChatOptions;
+  response?: ChatResponse;
   error?: string;
 }
 

@@ -1,5 +1,3 @@
-import { log } from "../../utils/logger";
-
 interface GitHubRepo {
   name?: string;
   description?: string;
@@ -20,14 +18,21 @@ interface StravaActivity {
   start_date?: string;
 }
 
-function renderTemplate(template: string, item: any): string {
+interface ParsedData {
+  items?: unknown;
+  repositories?: unknown;
+  activities?: unknown;
+  [key: string]: unknown;
+}
+
+function renderTemplate(template: string, item: Record<string, unknown>): string {
   return template.replace(/\{([^}]+)\}/g, (match, expression) => {
     const [expr, formatter] = expression.split(":");
     const keys = expr.trim().split(".");
-    let value = item;
+    let value: unknown = item;
     for (const key of keys) {
       if (value && typeof value === "object") {
-        value = value[key];
+        value = (value as Record<string, unknown>)[key];
       } else {
         value = undefined;
         break;
@@ -46,7 +51,7 @@ function renderTemplate(template: string, item: any): string {
     }
     if (formatter === "date") {
       try {
-        return new Date(value).toLocaleDateString();
+        return new Date(value as string | number | Date).toLocaleDateString();
       } catch {
         return String(value);
       }
@@ -57,13 +62,13 @@ function renderTemplate(template: string, item: any): string {
 }
 
 export function transformMcpDataToNarrative(
-  content: any,
+  content: unknown,
   serverName: string,
   toolName: string,
   config?: { itemTemplate?: string; narrativeTemplate?: string }
 ): { contentText: string; rawData: string } {
   const rawData = typeof content === "string" ? content : JSON.stringify(content);
-  let parsed: any = content;
+  let parsed: ParsedData | unknown[] | null = null;
 
   if (typeof content === "string") {
     try {
@@ -72,6 +77,8 @@ export function transformMcpDataToNarrative(
       // Not JSON content, return as is
       return { contentText: content, rawData };
     }
+  } else {
+    parsed = content as ParsedData | unknown[];
   }
 
   if (!parsed || typeof parsed !== "object") {
@@ -83,16 +90,20 @@ export function transformMcpDataToNarrative(
     if (config.itemTemplate) {
       const items = Array.isArray(parsed)
         ? parsed
-        : Array.isArray(parsed.items)
-        ? parsed.items
-        : Array.isArray(parsed.repositories)
-        ? parsed.repositories
-        : Array.isArray(parsed.activities)
-        ? parsed.activities
+        : parsed && typeof parsed === "object" && !Array.isArray(parsed)
+        ? Array.isArray(parsed.items)
+          ? (parsed.items as unknown[])
+          : Array.isArray(parsed.repositories)
+          ? (parsed.repositories as unknown[])
+          : Array.isArray(parsed.activities)
+          ? (parsed.activities as unknown[])
+          : null
         : null;
 
       if (items && items.length > 0) {
-        const narrativeLines = items.map((item) => renderTemplate(config.itemTemplate!, item));
+        const narrativeLines = items.map((item) =>
+          renderTemplate(config.itemTemplate!, item as Record<string, unknown>)
+        );
         return {
           contentText: `${serverName.toUpperCase()} Data:\n${narrativeLines.join("\n")}`,
           rawData,
@@ -100,9 +111,9 @@ export function transformMcpDataToNarrative(
       }
     }
 
-    if (config.narrativeTemplate) {
+    if (config.narrativeTemplate && parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
       return {
-        contentText: renderTemplate(config.narrativeTemplate, parsed),
+        contentText: renderTemplate(config.narrativeTemplate, parsed as Record<string, unknown>),
         rawData,
       };
     }

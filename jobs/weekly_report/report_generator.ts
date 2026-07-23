@@ -6,12 +6,25 @@ import { log } from "../../utils/logger";
 import { REPORTS_DIR } from "../../utils/paths";
 import { VectorStore } from "../../memory/vector_store";
 
+interface ActivityData {
+  start_date?: string;
+  created_at?: string;
+  date?: string;
+  updated_at?: string;
+  [key: string]: unknown;
+}
+
+interface McpSourceData {
+  activities: ActivityData[];
+  [key: string]: unknown;
+}
+
 export async function generateWeeklyReport(): Promise<string> {
   log.info("Generating weekly report...");
 
   // 1. Collect Data from Vector Store (previously saved from MCP sync)
   const vectorStore = new VectorStore();
-  const mcpData: Record<string, any> = {};
+  const mcpData: Record<string, McpSourceData> = {};
 
   try {
     await vectorStore.load();
@@ -25,7 +38,7 @@ export async function generateWeeklyReport(): Promise<string> {
     );
 
     for (const doc of mcpDocs) {
-      const parts = doc.metadata.source.split(":");
+      const parts = (doc.metadata.source as string).split(":");
       const sourceName = parts[1]; // e.g. "github" or "strava"
       
       if (!mcpData[sourceName]) {
@@ -42,7 +55,7 @@ export async function generateWeeklyReport(): Promise<string> {
           } else {
             // Merge profile/settings or lists of items
             const parsedActivities = Array.isArray(parsed.activities) ? parsed.activities : [];
-            const otherFields = { ...parsed };
+            const otherFields = { ...parsed } as Record<string, unknown>;
             delete otherFields.activities;
 
             mcpData[sourceName] = {
@@ -65,7 +78,7 @@ export async function generateWeeklyReport(): Promise<string> {
     for (const sourceName of Object.keys(mcpData)) {
       const data = mcpData[sourceName];
       if (data.activities && Array.isArray(data.activities) && data.activities.length > 0) {
-        const recent = data.activities.filter((act: any) => {
+        const recent = data.activities.filter((act) => {
           const dateStr = act.start_date || act.created_at || act.date || act.updated_at;
           if (!dateStr) return true; // Keep if no date found
           return new Date(dateStr) >= sevenDaysAgo;
@@ -94,7 +107,7 @@ export async function generateWeeklyReport(): Promise<string> {
         name = meConfig.profile.name.split(" ")[0];
       }
     }
-  } catch (e) {
+  } catch {
     // Fall back silently
   }
 

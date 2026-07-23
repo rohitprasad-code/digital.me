@@ -4,6 +4,7 @@ import { registry } from "../model/registry/unified";
 import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "../model/providers/provider";
 import { EmbeddingProvider } from "../model/providers/embeddings";
 import { ToolDefinition } from "../model/registry/types";
+import { Client } from "@modelcontextprotocol/sdk/client/index.js";
 
 // Mock providers for testing
 class MockLLMProvider implements LLMProvider {
@@ -87,7 +88,7 @@ describe("UnifiedRegistry", () => {
 
   it("should register and retrieve MCP clients", () => {
     // Mock the MCP Client
-    const mockClient = {} as any;
+    const mockClient = {} as unknown as Client;
     registry.registerMcpClient("mock-server", mockClient);
 
     expect(registry.listMcpClients()).toContain("mock-server");
