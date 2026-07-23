@@ -22,6 +22,18 @@ async function ingest() {
   // Load existing vectors (we DO NOT clear it anymore, so we can do incremental syncs)
   await vectorStore.load();
 
+  let lastSyncTime = new Date(0);
+  try {
+    const allDocs = await vectorStore.getAllDocuments();
+    const syncTimeDoc = allDocs.find((d) => d.metadata?.source === "system:last_sync_marker");
+    if (syncTimeDoc && syncTimeDoc.metadata?.timestamp) {
+      lastSyncTime = new Date(syncTimeDoc.metadata.timestamp as string);
+    }
+  } catch (err) {
+    log.warn("Could not retrieve last sync time, defaulting to epoch:", err);
+  }
+  log.info(`Last successful sync time: ${lastSyncTime.toISOString()}`);
+
   const pipeline = new EmbeddingPipeline(vectorStore);
 
   const publicPath = path.resolve(process.cwd(), "public");
@@ -96,13 +108,59 @@ async function ingest() {
             for (const task of serverConfig.ingest) {
               try {
                 log.info(`Running ingest tool: ${task.tool} for ${serverName}...`);
+                const taskArgs = { ...task.args };
+                if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities")) {
+                  const epochSecs = Math.floor(lastSyncTime.getTime() / 1000);
+                  taskArgs.after = epochSecs;
+                  log.info(`Injecting after=${epochSecs} epoch seconds for Strava differential sync.`);
+                }
+
                 const result = await client.callTool({
                   name: task.tool,
-                  arguments: task.args || {},
+                  arguments: taskArgs,
                 }).catch(() => null);
 
                 if (result && typeof result === "object" && "content" in result) {
-                  const content = (result as Record<string, unknown>).content;
+                  let content = (result as Record<string, unknown>).content;
+
+                  // Differential filtering for GitHub repositories
+                  if (serverName === "github" && task.tool === "list_repositories") {
+                    let repos = Array.isArray(content)
+                      ? content
+                      : content && typeof content === "object" && Array.isArray((content as any).repositories)
+                      ? (content as any).repositories
+                      : null;
+
+                    if (Array.isArray(repos)) {
+                      const initialCount = repos.length;
+                      repos = repos.filter((repo: any) => repo && repo.updated_at && new Date(repo.updated_at) > lastSyncTime);
+                      log.info(`Differential sync: Filtered GitHub repositories from ${initialCount} to ${repos.length} based on last sync.`);
+                      if (repos.length === 0) {
+                        log.info(`No updated repositories since last sync. Skipping indexing.`);
+                        continue;
+                      }
+                      if (Array.isArray(content)) {
+                        content = repos;
+                      } else {
+                        (content as any).repositories = repos;
+                      }
+                    }
+                  }
+
+                  // Differential check for Strava activities returned (if any)
+                  if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities")) {
+                    let activities = Array.isArray(content)
+                      ? content
+                      : content && typeof content === "object" && Array.isArray((content as any).activities)
+                      ? (content as any).activities
+                      : null;
+
+                    if (Array.isArray(activities) && activities.length === 0) {
+                      log.info(`No new Strava activities since last sync. Skipping indexing.`);
+                      continue;
+                    }
+                  }
+
                   const { contentText, rawData } = transformMcpDataToNarrative(content, serverName, task.tool, task);
                   await pipeline.syncDocument(contentText, {
                     source: `mcp:${serverName}:${task.source}`,
@@ -127,6 +185,16 @@ async function ingest() {
 
   // Final step: clean up any old documents that weren't synced today
   // await pipeline.cleanupStaleDocuments();
+
+  // Save system sync marker for future differential runs
+  try {
+    await pipeline.syncDocument("Last sync marker.", {
+      source: "system:last_sync_marker",
+      timestamp: new Date().toISOString(),
+    });
+  } catch (err) {
+    log.error("Failed to write system sync marker", err);
+  }
 
   try {
     log.info("Saving vector store...");

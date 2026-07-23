@@ -38,8 +38,9 @@ export async function POST(req: NextRequest) {
       authPasscode === "developer" ||
       (!!customApiKey && customApiKey.trim().length > 0);
 
+    const isRateLimitEnabled = process.env.ENABLE_RATE_LIMIT === "true";
     let chatCount = 0;
-    if (!isAuthenticated) {
+    if (isRateLimitEnabled && !isAuthenticated) {
       const countCookie = req.cookies.get("free_chat_count");
       chatCount = parseInt(countCookie?.value || "0", 10);
       if (chatCount >= 5) {
@@ -138,7 +139,7 @@ export async function POST(req: NextRequest) {
           },
         });
 
-        if (!isAuthenticated) {
+        if (isRateLimitEnabled && !isAuthenticated) {
           response.headers.set(
             "Set-Cookie",
             `free_chat_count=${chatCount + 1}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict`,
@@ -179,7 +180,7 @@ export async function POST(req: NextRequest) {
       },
     });
 
-    if (!isAuthenticated) {
+    if (isRateLimitEnabled && !isAuthenticated) {
       response.headers.set(
         "Set-Cookie",
         `free_chat_count=${chatCount + 1}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict`,
