@@ -25,7 +25,7 @@ export class MemoryRouter {
   }
 
   private async routeWithKeywords(query: string): Promise<MemoryType> {
-    const lowerQuery = query.toLowerCase();
+    const lowerQuery = query.toLowerCase().trim();
 
     // Conversational keywords
     const conversationalKeywords = [
@@ -40,7 +40,7 @@ export class MemoryRouter {
     ];
     if (
       conversationalKeywords.some(
-        (k) => lowerQuery.startsWith(k) || lowerQuery === k,
+        (k) => new RegExp(`\\b${k}\\b`, "i").test(query) || lowerQuery.startsWith(k)
       )
     ) {
       return MemoryType.CONVERSATIONAL;

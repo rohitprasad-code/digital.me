@@ -27,7 +27,8 @@ export async function generateWeeklyReport(): Promise<string> {
     let githubMerged: Record<string, unknown> & { activities?: unknown[] } = {};
     for (const doc of githubDocs) {
       try {
-        const parsed = JSON.parse(doc.content);
+        const rawContent = (doc.metadata?.rawData as string) || doc.content;
+        const parsed = JSON.parse(rawContent);
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
           githubMerged = { ...githubMerged, ...(parsed as Record<string, unknown>) };
         }
@@ -57,7 +58,8 @@ export async function generateWeeklyReport(): Promise<string> {
     let stravaMerged: Record<string, unknown> & { activities?: unknown[] } = {};
     for (const doc of stravaDocs) {
       try {
-        const parsed = JSON.parse(doc.content);
+        const rawContent = (doc.metadata?.rawData as string) || doc.content;
+        const parsed = JSON.parse(rawContent);
         if (parsed && typeof parsed === "object" && !Array.isArray(parsed)) {
           stravaMerged = { ...stravaMerged, ...(parsed as Record<string, unknown>) };
         }

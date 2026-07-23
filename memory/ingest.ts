@@ -13,6 +13,7 @@ import { JsonParser } from "./data_processing/parsers/json_parser";
 import { PdfParser } from "./data_processing/parsers/pdf_parser";
 import { TextParser } from "./data_processing/parsers/text_parser";
 import { HtmlParser } from "./data_processing/parsers/html_parser";
+import { transformMcpDataToNarrative } from "./data_processing/mcp_transformer";
 
 async function ingest() {
   log.info("Ingestion started");
@@ -102,9 +103,11 @@ async function ingest() {
 
                 if (result && typeof result === "object" && "content" in result) {
                   const content = (result as Record<string, unknown>).content;
-                  await pipeline.syncDocument(JSON.stringify(content), {
+                  const { contentText, rawData } = transformMcpDataToNarrative(content, serverName, task.tool);
+                  await pipeline.syncDocument(contentText, {
                     source: `mcp:${serverName}:${task.source}`,
                     title: task.title || `${serverName} ${task.tool}`,
+                    rawData,
                   });
                   log.success(`✓ Ingested ${task.tool} via MCP tool`);
                 }
