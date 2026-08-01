@@ -6,15 +6,13 @@ The `jobs/` module contains background processes and pipelines that run on a sch
 
 ### Scheduler (`scheduler.ts`)
 
-A [node-cron](https://github.com/node-cron/node-cron) based scheduler that runs three recurring jobs:
+A [node-cron](https://github.com/node-cron/node-cron) based scheduler that runs two recurring jobs:
 
 | Job                      | Schedule            | What It Does                                                    |
 | ------------------------ | ------------------- | --------------------------------------------------------------- |
-| **Data Ingestion**       | Daily at 11:00 PM   | Runs `npm run cli:exec ingest` to re-pull all data sources      |
+| **Data Ingestion**       | Daily at 11:00 PM   | Runs `npm run cli:exec ingest` to dynamically refresh all data sources |
 | **Weekly Report**        | Sundays at 11:50 PM | Runs `npm run cli:exec report` to generate an LLM-based summary |
-| **Strava Token Refresh** | Every 5 hours       | Calls `refreshTokenSilently()` to keep the Strava token valid   |
 
-- Strava token refresh is **headless** — it never opens a browser. If no valid tokens exist, it logs a warning and skips.
 - The scheduler is started with `npm run scheduler`.
 
 ### Embedding Pipeline (`embedding_pipeline.ts`)
@@ -53,15 +51,16 @@ Generates an LLM-synthesized weekly summary from your GitHub and Strava data.
 
 | File                  | Purpose                                                                   |
 | --------------------- | ------------------------------------------------------------------------- |
-| `report_generator.ts` | Reads `github.json` + `strava.json`, filters to last 7 days, sends to LLM |
+| `report_generator.ts` | Loads MCP data from vector store, filters to last 7 days, sends to LLM |
 | `index.ts`            | Re-exports `generateWeeklyReport()`                                       |
 
 **Report flow:**
 
-1. Reads cached JSON from `data/processed/` (GitHub activity + Strava activities)
-2. Filters to the **last 7 days**
-3. Sends the data to the LLM with the `WEEKLY_REPORT_PROMPT` template
-4. Saves the generated markdown report to `data/reports/YYYY-MM-DD.md`
+1. Loads all documents from the vector store and extracts those ingested from MCP servers (source starts with `mcp:`)
+2. Groups and merges the raw data (profile details, list of activities/repos, etc.)
+3. Filters the activities to the **last 7 days**
+4. Sends the aggregated data to the LLM with the `WEEKLY_REPORT_PROMPT` template
+5. Saves the generated markdown report to `data/reports/YYYY-MM-DD.md`
 
 ## File Structure
 

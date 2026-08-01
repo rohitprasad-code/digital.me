@@ -125,15 +125,19 @@ async function ingest() {
 
                   // Differential filtering for GitHub repositories
                   if (serverName === "github" && task.tool === "list_repositories") {
+                    const contentRecord = content as Record<string, unknown>;
                     let repos = Array.isArray(content)
                       ? content
-                      : content && typeof content === "object" && Array.isArray((content as any).repositories)
-                      ? (content as any).repositories
+                      : contentRecord && Array.isArray(contentRecord.repositories)
+                      ? contentRecord.repositories
                       : null;
 
                     if (Array.isArray(repos)) {
                       const initialCount = repos.length;
-                      repos = repos.filter((repo: any) => repo && repo.updated_at && new Date(repo.updated_at) > lastSyncTime);
+                      repos = repos.filter((repo) => {
+                        const r = repo as Record<string, unknown>;
+                        return r && r.updated_at && new Date(String(r.updated_at)) > lastSyncTime;
+                      });
                       log.info(`Differential sync: Filtered GitHub repositories from ${initialCount} to ${repos.length} based on last sync.`);
                       if (repos.length === 0) {
                         log.info(`No updated repositories since last sync. Skipping indexing.`);
@@ -142,17 +146,18 @@ async function ingest() {
                       if (Array.isArray(content)) {
                         content = repos;
                       } else {
-                        (content as any).repositories = repos;
+                        contentRecord.repositories = repos;
                       }
                     }
                   }
 
                   // Differential check for Strava activities returned (if any)
                   if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities")) {
-                    let activities = Array.isArray(content)
+                    const contentRecord = content as Record<string, unknown>;
+                    const activities = Array.isArray(content)
                       ? content
-                      : content && typeof content === "object" && Array.isArray((content as any).activities)
-                      ? (content as any).activities
+                      : contentRecord && Array.isArray(contentRecord.activities)
+                      ? contentRecord.activities
                       : null;
 
                     if (Array.isArray(activities) && activities.length === 0) {

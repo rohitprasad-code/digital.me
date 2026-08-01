@@ -1,10 +1,10 @@
 # API Routes
 
-The `api/` directory contains the logic that powers Digital Me's API layer. It handles incoming chat requests, orchestrates RAG retrieval, streams LLM responses back to the client, and serves generated reports.
+The `app/api/` directory contains the logic that powers Digital Me's API layer. It handles incoming chat requests, orchestrates RAG retrieval, streams LLM responses back to the client, and serves generated reports.
 
 ## Routes
 
-### Chat API (`api/chat.ts`)
+### Chat API (`app/api/chat/route.ts`)
 
 #### `GET /api/chat`
 
@@ -12,7 +12,7 @@ Health check — verifies the AI backend is reachable.
 
 | Status | Response                                     |
 | ------ | -------------------------------------------- |
-| `200`  | `Digital-Me is running`                      |
+| `200`  | `Digital-Me (Chat) is running`                      |
 | `503`  | `Service Unavailable: AI Backend is offline` |
 
 #### `POST /api/chat`
@@ -33,7 +33,7 @@ Main chat completion endpoint. Accepts conversation history, retrieves relevant 
 
 **Response:** Streamed `text/plain; charset=utf-8` — tokens are sent chunk-by-chunk as they are generated.
 
-### Report API (`api/report.ts`)
+### Report API (`app/api/report/route.ts`)
 
 #### `GET /api/report`
 
@@ -89,16 +89,16 @@ Generates a new weekly report and returns its markdown content.
 The API layer is built with **Next.js 15 App Router**, leveraging **Route Handlers** for server-side logic and streaming.
 
 - **Conversation Flow**: Each chat request extracts the last user message, which is then used by the `VectorStore` to perform a cosine similarity search on the latest ingested data.
-- **RAG Orchestration**: The retrieved context is injected into a specialized **System Prompt**, along with the full chat history, and passed to the **LLM Provider** (Ollama).
-- **Token Streaming**: Uses the `ollama.chat` method with `stream: true`. Chunks are sent to the client as they arrive, providing a smooth, real-time typing effect in the CLI or UI.
+- **RAG Orchestration**: The retrieved context is injected into a specialized **System Prompt**, along with the full chat history, and passed to the **LLM Provider** (Ollama, Groq, Gemini, or GPT).
+- **Token Streaming**: Uses the `llmProvider.chatStream` method. Chunks are sent to the client as they arrive, providing a smooth, real-time typing effect in the CLI or UI.
 - **Report Generation**: The Report API reads pre-processed JSON data from `data/processed/`, filters it by date, and uses the LLM to synthesize a natural language summary.
 
 ## File Structure
 
-| File        | Purpose                                                         |
-| ----------- | --------------------------------------------------------------- |
-| `chat.ts`   | API route handler — `GET` health check + `POST` chat completion |
-| `report.ts` | API route handler — `GET` user reports + `POST` generate report |
+| File                  | Purpose                                                         |
+| --------------------- | --------------------------------------------------------------- |
+| `chat/route.ts`       | API route handler — `GET` health check + `POST` chat completion |
+| `report/route.ts`     | API route handler — `GET` user reports + `POST` generate report |
 
 ## Notes
 

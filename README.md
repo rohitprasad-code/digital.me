@@ -45,24 +45,29 @@ Digital Me is an AI-powered personal digital twin. It's designed to ingest your 
 ```
 digital-me/
 ├── app/
-│   └── api/              # Next.js API route — chat endpoint + RAG logic
+│   ├── api/              # Next.js API Route Handlers (chat, report, mcp, models)
+│   │   ├── chat/route.ts     # Chat completion + RAG orchestration
+│   │   └── report/route.ts   # Report retrieval & generation
+│   ├── components/       # Frontend UI components (ChatInterface, WeeklyReport, etc.)
+│   ├── globals.css       # Global styles (Tailwind CSS)
+│   ├── layout.tsx        # App layout
+│   └── page.tsx          # Main application page
 ├── cli/
 │   ├── index.ts          # CLI entrypoint (Commander)
 │   └── chat.ts           # Interactive chat session
-├── integrations/
-│   ├── github/           # GitHub profile, repos & commit ingestion
-│   └── strava/           # Strava activity ingestion
 ├── memory/
-│   ├── ingest.ts         # Orchestrates full ingestion pipeline
+│   ├── ingest.ts         # Orchestrates dynamic MCP-based ingestion pipeline
 │   ├── router.ts         # MemoryRouter — routes queries by type
-│   ├── vector_store/     # Embedding storage & cosine similarity search
-│   └── data_processing/  # Document parsing, structure analysis & chunking
-│       └── parsers/      # Parsers for PDF, Markdown, JSON and all
+│   ├── vector_store/     # Embedding storage & cosine similarity search (JSON vector store)
+│   └── data_processing/  # Document parsing (PDF, JSON, HTML, Text) & chunking
+│       └── parsers/      # Parsers for PDF, Markdown, JSON and HTML
 ├── model/
-│   ├── llm/              # Ollama client configuration
+│   ├── agents/           # Specialized agents (Groq agent, Semantic Router, JSON agent)
+│   ├── middleware/       # LLM provider middleware (caching, rate limiting, logging)
+│   ├── providers/        # LLM providers (Ollama, Gemini, Groq, GPT)
 │   └── prompts/          # System prompts & prompt templates
 ├── public/               # Raw static data sources
-│   ├── codes/            # Structured config (e.g., me.json)
+│   ├── codes/            # Structured config (e.g., me.json, router_config.json)
 │   └── documents/        # PDFs, Markdown, Text (e.g., resume.pdf)
 └── scripts/
     └── dev-cli.js        # Dev helper for CLI execution
@@ -93,6 +98,9 @@ npm install
 Create a `.env.local` file in the project root:
 
 ```env
+# LLM Provider (ollama, gemini, groq, gpt)
+LLM_PROVIDER=ollama
+
 # GitHub integration
 GITHUB_TOKEN=your_github_token
 GITHUB_USERNAME=your_github_username
@@ -111,9 +119,10 @@ LINKEDIN_CLIENT_SECRET=your_linkedin_secret
 
 ### 3. Prepare Your Data
 
-| File                       | Purpose                                               |
-| -------------------------- | ----------------------------------------------------- |
-| `memory/static/resume.pdf` | Your resume (parsed via LLM into structured sections) |
+| File                           | Purpose                                               |
+| ------------------------------ | ----------------------------------------------------- |
+| `public/documents/resume.pdf`  | Your resume (parsed via LLM into structured sections) |
+| `public/codes/me.json`         | Structured personal metadata / identity configuration |
 
 ### 4. Run
 

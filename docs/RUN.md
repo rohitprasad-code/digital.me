@@ -98,11 +98,9 @@ docker compose -f docker/docker-compose.yml up -d --scale app=3
 
 ## 5. Termux Setup (Run on Android)
 
-You can run the full Digital Me backend (API and Ollama) on an Android phone using Termux. 
+You can run the full Digital Me backend (API and Ollama) on an Android phone using Termux.
 
-For full details, please refer to [**TERMUX_SETUP.md**](./TERMUX_SETUP.md).
-
-### Quick Summary
+### Setup Steps
 1. Install Termux (via F-Droid).
 2. Install dependencies: `pkg install nodejs git ollama`
 3. Run `ollama serve` and pull a lightweight model (e.g., `ollama pull llama3.2:1b`).

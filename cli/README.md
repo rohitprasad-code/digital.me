@@ -24,7 +24,7 @@ npm run cli chat
 
 ### `ingest`
 
-Runs the full data ingestion pipeline to build / rebuild the vector store.
+Runs the data ingestion pipeline to sync content into the vector store.
 
 ```bash
 npm run cli ingest
@@ -32,11 +32,13 @@ npm run cli ingest
 
 **Pipeline steps:**
 
-1. Clears the existing vector store
-2. Loads data from `public/` directory
-3. Fetches GitHub data (profile, repos, recent activity)
-4. Fetches Strava data (profile, recent activities)
-5. Chunks, embeds, and indexes everything into the vector store
+1. Loads the existing vector store to perform an incremental sync.
+2. Crawls the `public/` directory and parses PDFs, JSON configs, HTML, and text files.
+3. Uses file hashes and timestamps to skip unchanged local files.
+4. Dynamically connects to configured Model Context Protocol (MCP) servers (e.g. GitHub, Strava) to fetch remote data.
+5. Employs differential sync to skip remote documents that haven't been updated since the last sync.
+6. Chunks, embeds, and indexes new/modified content.
+7. Saves the updated index back to disk.
 
 ## 🛠️ Implementation
 
