@@ -8,6 +8,11 @@ import {
 import { VectorStore } from "@/memory/vector_store";
 import { MemoryRouter } from "@/memory/router";
 import { runAgentLoop } from "@/model/agents/groq_agent";
+import { runAgentLoop as runJsonAgentLoop } from "@/model/agents/json_agent";
+import { initializeMcpTools, isInitialized } from "@/model/registry/tools";
+import { registry } from "@/model/registry/unified";
+
+import { verifyGrounding } from "@/model/middleware/grounding";
 
 const vectorStore = new VectorStore();
 const router = new MemoryRouter();
@@ -110,65 +115,113 @@ export async function POST(req: NextRequest) {
       }),
     );
 
-    // Use agent loop with tool calling (Groq provider)
-    // Falls back to regular streaming for non-Groq providers
-    const isGroqProvider =
-      (provider || process.env.LLM_PROVIDER || "groq").toLowerCase() ===
-      "groq";
-
-    if (isGroqProvider) {
+    // Initialize MCP tools if not already initialized
+    if (!isInitialized) {
       try {
-        const agentResponse = await runAgentLoop(
-          systemPrompt,
-          conversationMessages,
-        );
-
-        // Stream the agent's final response character by character for consistency
-        const encoder = new TextEncoder();
-        const stream = new ReadableStream({
-          start(controller) {
-            controller.enqueue(encoder.encode(agentResponse));
-            controller.close();
-          },
-        });
-
-        const response = new Response(stream, {
-          headers: {
-            "Content-Type": "text/plain; charset=utf-8",
-            "Transfer-Encoding": "chunked",
-          },
-        });
-
-        if (isRateLimitEnabled && !isAuthenticated) {
-          response.headers.set(
-            "Set-Cookie",
-            `free_chat_count=${chatCount + 1}; Path=/; Max-Age=86400; HttpOnly; SameSite=Strict`,
-          );
-        }
-
-        return response;
-      } catch (agentError) {
-        console.error("Agent loop failed, falling back to streaming:", agentError);
-        // Fall through to regular streaming below
+        await initializeMcpTools();
+      } catch (mcpErr) {
+        console.error("Failed to initialize MCP tools during chat:", mcpErr);
       }
     }
 
-    // Fallback: regular streaming without tool calling (for Ollama, Gemini, etc.)
-    const allMessages = [
-      {
-        role: "system" as const,
-        content: systemPrompt,
-      },
-      ...messages,
-    ];
+    // Use agent loop with tool calling
+    const selectedProvider = provider || process.env.LLM_PROVIDER || "groq";
+    const isGroqProvider = selectedProvider.toLowerCase() === "groq";
 
-    const llmProvider = getLLMProvider(provider);
+    let finalResponseText = "";
+    let ranAgent = false;
 
-    const stream = new ReadableStream({
-      async start(controller) {
-        for await (const chunk of llmProvider.chatStream(allMessages)) {
-          controller.enqueue(chunk);
+    if (isGroqProvider) {
+      try {
+        let agentResponse = await runAgentLoop(
+          systemPrompt,
+          conversationMessages,
+        );
+        ranAgent = true;
+
+        // Grounding guardrail check for Groq
+        if (contextString.trim().length > 0) {
+          const grounding = await verifyGrounding(contextString, agentResponse, selectedProvider);
+          if (!grounding.safe) {
+            console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
+            const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
+            agentResponse = await runAgentLoop(correctivePrompt, conversationMessages);
+          }
         }
+        finalResponseText = agentResponse;
+      } catch (agentError) {
+        console.error("Groq Agent loop failed, falling back:", agentError);
+      }
+    } else {
+      // For non-Groq providers, run the JSON-based agent loop if tools are registered
+      const registeredTools = registry.listTools();
+      if (registeredTools.length > 0) {
+        try {
+          const llmProvider = getLLMProvider(selectedProvider);
+          let agentResponse = await runJsonAgentLoop(
+            llmProvider,
+            systemPrompt,
+            conversationMessages,
+          );
+          ranAgent = true;
+
+          // Grounding guardrail check for JSON agent
+          if (contextString.trim().length > 0) {
+            const grounding = await verifyGrounding(contextString, agentResponse, selectedProvider);
+            if (!grounding.safe) {
+              console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
+              const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
+              agentResponse = await runJsonAgentLoop(llmProvider, correctivePrompt, conversationMessages);
+            }
+          }
+          finalResponseText = agentResponse;
+        } catch (agentError) {
+          console.error("JSON Agent loop failed, falling back:", agentError);
+        }
+      }
+    }
+
+    // Fallback: regular chat without tool calling (for Ollama, Gemini, etc.) if agent loop wasn't run or failed
+    if (!ranAgent || !finalResponseText) {
+      try {
+        const llmProvider = getLLMProvider(selectedProvider);
+        const allMessages = [
+          {
+            role: "system" as const,
+            content: systemPrompt,
+          },
+          ...messages,
+        ];
+        const res = await llmProvider.chat(allMessages);
+        let fallbackResponse = res.content;
+
+        // Grounding guardrail check for fallback
+        if (contextString.trim().length > 0) {
+          const grounding = await verifyGrounding(contextString, fallbackResponse, selectedProvider);
+          if (!grounding.safe) {
+            console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
+            const correctionMessages = [
+              {
+                role: "system" as const,
+                content: `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`,
+              },
+              ...messages,
+            ];
+            const correctedRes = await llmProvider.chat(correctionMessages);
+            fallbackResponse = correctedRes.content;
+          }
+        }
+        finalResponseText = fallbackResponse;
+      } catch (err) {
+        console.error("Fallback chat flow failed:", err);
+        finalResponseText = "I'm sorry, I could not verify that information in my local memory.";
+      }
+    }
+
+    const encoder = new TextEncoder();
+    const stream = new ReadableStream({
+      start(controller) {
+        controller.enqueue(encoder.encode(finalResponseText));
         controller.close();
       },
     });

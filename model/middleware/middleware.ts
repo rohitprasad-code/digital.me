@@ -1,4 +1,4 @@
-import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "./provider";
+import { LLMProvider, ChatMessage, ChatOptions, ChatResponse } from "../providers/provider";
 
 export type NextFn = (
   messages: ChatMessage[],
