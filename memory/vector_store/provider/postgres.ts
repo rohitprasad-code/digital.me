@@ -1,8 +1,8 @@
-import { getEmbeddingProvider } from "@/model/providers/embeddings";
+import { getEmbeddingProvider } from "../../../model/providers/embeddings";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 import postgres from "postgres";
-import { Document } from "../types";
+import { Document, VectorSearchFilter } from "../types";
 
 let sql: postgres.Sql;
 
@@ -110,7 +110,6 @@ export class PostgresVectorStore {
       filePath,
       content,
       metadata,
-      embedding,
       lastUpdatedAt: new Date(),
     };
   }
@@ -128,24 +127,46 @@ export class PostgresVectorStore {
   async search(
     query: string,
     limit: number = 3,
+    filter?: VectorSearchFilter,
   ): Promise<{ doc: Document; score: number }[]> {
     const db = getDb();
     const embeddingProvider = getEmbeddingProvider();
     const queryEmbedding = await embeddingProvider.embed(query);
 
     try {
-      const rows = await db`
-        SELECT 
-          id, 
-          file_path,
-          content, 
-          metadata, 
-          last_updated_at,
-          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
-        FROM document_chunks
-        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
-        LIMIT ${limit}
-      `;
+      let rows;
+      if (filter && filter.category) {
+        const categoryVal = Array.isArray(filter.category)
+          ? filter.category[0]
+          : filter.category;
+        rows = await db`
+          SELECT 
+            id, 
+            file_path,
+            content, 
+            metadata, 
+            last_updated_at,
+            1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
+          FROM document_chunks
+          WHERE metadata->>'category' = ${categoryVal}
+          ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+          LIMIT ${limit}
+        `;
+      } else {
+        rows = await db`
+          SELECT 
+            id, 
+            file_path,
+            content, 
+            metadata, 
+            last_updated_at,
+            1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
+          FROM document_chunks
+          WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
+          ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+          LIMIT ${limit}
+        `;
+      }
 
       return rows.map((row) => ({
         doc: {

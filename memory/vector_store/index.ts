@@ -1,4 +1,4 @@
-import { Document, IVectorStore } from "./types";
+import { Document, IVectorStore, VectorSearchFilter } from "./types";
 import { PostgresVectorStore } from "./provider/postgres";
 import { JsonVectorStore } from "./provider/json";
 
@@ -42,8 +42,8 @@ export class VectorStore implements IVectorStore {
   async addDocument(c: string, m?: Record<string, unknown>, autoSave?: boolean) {
     return this.store.addDocument(c, m, autoSave);
   }
-  async search(q: string, l?: number) {
-    return this.store.search(q, l);
+  async search(q: string, l?: number, filter?: VectorSearchFilter) {
+    return this.store.search(q, l, filter);
   }
   async save() {
     return this.store.save();

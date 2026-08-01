@@ -1,3 +1,12 @@
+export type MemoryCategory = "static" | "dynamic" | "conversational" | "system";
+
+export interface VectorSearchFilter {
+  category?: MemoryCategory | MemoryCategory[];
+  excludeCategory?: MemoryCategory[];
+  source?: string;
+  [key: string]: unknown;
+}
+
 export interface Document {
   id: string;
   filePath?: string;
@@ -26,6 +35,7 @@ export interface IVectorStore {
   search(
     query: string,
     limit?: number,
+    filter?: VectorSearchFilter,
   ): Promise<{ doc: Document; score: number }[]>;
   save(): Promise<void>;
   load(): Promise<void>;

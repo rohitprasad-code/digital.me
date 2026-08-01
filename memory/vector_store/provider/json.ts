@@ -1,11 +1,11 @@
-import { getEmbeddingProvider } from "@/model/providers/embeddings";
+import { getEmbeddingProvider } from "../../../model/providers/embeddings";
 import computeCosineSimilarity from "compute-cosine-similarity";
 import { v4 as uuidv4 } from "uuid";
 import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
-import { VECTOR_DIR } from "@/utils/paths";
-import { Document } from "../types";
+import { VECTOR_DIR } from "../../../utils/paths";
+import { Document, VectorSearchFilter, MemoryCategory } from "../types";
 
 export class JsonVectorStore {
   private documents: Document[] = [];
@@ -123,11 +123,43 @@ export class JsonVectorStore {
   async search(
     query: string,
     limit: number = 3,
+    filter?: VectorSearchFilter,
   ): Promise<{ doc: Document; score: number }[]> {
     const embeddingProvider = getEmbeddingProvider();
     const queryEmbedding = await embeddingProvider.embed(query);
 
-    const scoredDocs = this.documents.map((doc) => {
+    let docsToSearch = this.documents;
+
+    if (filter) {
+      if (filter.category) {
+        const allowedCategories = Array.isArray(filter.category)
+          ? filter.category
+          : [filter.category];
+        docsToSearch = docsToSearch.filter((doc) =>
+          allowedCategories.includes(doc.metadata?.category as MemoryCategory),
+        );
+      }
+
+      if (filter.excludeCategory && filter.excludeCategory.length > 0) {
+        docsToSearch = docsToSearch.filter(
+          (doc) =>
+            !filter.excludeCategory!.includes(
+              doc.metadata?.category as MemoryCategory,
+            ),
+        );
+      }
+
+      if (filter.source) {
+        docsToSearch = docsToSearch.filter(
+          (doc) => doc.metadata?.source === filter.source,
+        );
+      }
+    } else {
+      // By default exclude system internal documents from query context
+      docsToSearch = docsToSearch.filter((doc) => doc.metadata?.category !== "system");
+    }
+
+    const scoredDocs = docsToSearch.map((doc) => {
       if (!doc.embedding) return { doc, score: -1 };
       const score =
         computeCosineSimilarity(queryEmbedding, doc.embedding) || -1;

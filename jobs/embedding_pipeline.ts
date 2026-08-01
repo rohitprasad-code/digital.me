@@ -43,8 +43,9 @@ export class EmbeddingPipeline {
     const inputForHashing = rawSource || content;
     const contentHash = this.generateHash(inputForHashing, metadata);
 
-    // We attach the provider and hash to the metadata for tracking
+    // We attach the provider, category, and hash to the metadata for tracking
     const enrichedMetadata = {
+      category: metadata.category || "static",
       ...metadata,
       _contentHash: contentHash,
       _embeddedBy: this.currentProvider,

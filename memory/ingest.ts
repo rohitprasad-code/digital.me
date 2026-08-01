@@ -167,8 +167,10 @@ async function ingest() {
                   }
 
                   const { contentText, rawData } = transformMcpDataToNarrative(content, serverName, task.tool, task);
+                  const mcpCategory = serverName === "strava" ? "dynamic" : "static";
                   await pipeline.syncDocument(contentText, {
                     source: `mcp:${serverName}:${task.source}`,
+                    category: mcpCategory,
                     title: task.title || `${serverName} ${task.tool}`,
                     rawData,
                   });
@@ -195,6 +197,7 @@ async function ingest() {
   try {
     await pipeline.syncDocument("Last sync marker.", {
       source: "system:last_sync_marker",
+      category: "system",
       timestamp: new Date().toISOString(),
     });
   } catch (err) {

@@ -2,11 +2,24 @@ import fs from "fs";
 import path from "path";
 import { getLLMProvider } from "@/model/providers/provider";
 import { ContextMode } from "@/model/prompts/core";
+import { MemoryCategory } from "./vector_store/types";
 
 export enum MemoryType {
   DYNAMIC = "DYNAMIC_MEMORY", // Strava, Health, etc.
   STATIC = "STATIC_MEMORY", // Resume, Projects, etc.
   CONVERSATIONAL = "CONVERSATIONAL_MEMORY", // Chat history
+}
+
+export function getCategoryForMemoryType(type: MemoryType): MemoryCategory {
+  switch (type) {
+    case MemoryType.DYNAMIC:
+      return "dynamic";
+    case MemoryType.CONVERSATIONAL:
+      return "conversational";
+    case MemoryType.STATIC:
+    default:
+      return "static";
+  }
 }
 
 export class MemoryRouter {

@@ -6,7 +6,7 @@ import {
   isValidMode,
 } from "@/model/prompts/core";
 import { VectorStore } from "@/memory/vector_store";
-import { MemoryRouter } from "@/memory/router";
+import { MemoryRouter, getCategoryForMemoryType } from "@/memory/router";
 import { runAgentLoop } from "@/model/agents/groq_agent";
 import { runAgentLoop as runJsonAgentLoop } from "@/model/agents/json_agent";
 import { initializeMcpTools, isInitialized } from "@/model/registry/tools";
@@ -86,7 +86,20 @@ export async function POST(req: NextRequest) {
 
         try {
           await vectorStore.load();
-          const results = await vectorStore.search(lastMessage.content, 10);
+          // Concentric Ring 1: Category-filtered search based on routed memory type
+          const memoryType = await router.route(lastMessage.content);
+          const targetCategory = getCategoryForMemoryType(memoryType);
+
+          let results = await vectorStore.search(lastMessage.content, 10, {
+            category: targetCategory,
+          });
+
+          // Concentric Ring 2: Fallback to global/static search if Ring 1 returns no matches
+          if (results.length === 0 && targetCategory !== "static") {
+            results = await vectorStore.search(lastMessage.content, 10, {
+              category: "static",
+            });
+          }
 
           if (results.length > 0) {
             const retrievedContent = results
@@ -94,7 +107,7 @@ export async function POST(req: NextRequest) {
               .join("\n---\n");
             contextString = `\n\nRelevant Context:\n${retrievedContent}`;
             console.log(
-              `Retrieved ${results.length} relevant documents for context.`,
+              `Retrieved ${results.length} relevant documents for category "${targetCategory}".`,
             );
           }
         } catch (err) {
