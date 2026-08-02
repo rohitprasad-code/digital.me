@@ -26,12 +26,16 @@ export async function generateWeeklyReport(): Promise<string> {
   const vectorStore = new VectorStore();
   const mcpData: Record<string, McpSourceData> = {};
 
+  const sevenDaysAgo = new Date();
+  sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
+  const now = new Date();
+
   try {
     await vectorStore.load();
-    const allDocs = await vectorStore.getAllDocuments();
+    const recentDocs = await vectorStore.getDocumentsByTimeRange(sevenDaysAgo, now);
 
     // Collect and group all MCP documents
-    const mcpDocs = allDocs.filter(
+    const mcpDocs = recentDocs.filter(
       (d) =>
         typeof d.metadata?.source === "string" &&
         d.metadata.source.startsWith("mcp:"),
@@ -71,13 +75,10 @@ export async function generateWeeklyReport(): Promise<string> {
       }
     }
 
-    // Filter recent activities in the generic mcpData structure
-    const sevenDaysAgo = new Date();
-    sevenDaysAgo.setDate(sevenDaysAgo.getDate() - 7);
-
     for (const sourceName of Object.keys(mcpData)) {
       const data = mcpData[sourceName];
       if (data.activities && Array.isArray(data.activities) && data.activities.length > 0) {
+        // Filter recent activities in the generic mcpData structure to double check (or just assign)
         const recent = data.activities.filter((act) => {
           const dateStr = act.start_date || act.created_at || act.date || act.updated_at;
           if (!dateStr) return true; // Keep if no date found
