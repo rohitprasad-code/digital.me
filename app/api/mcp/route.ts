@@ -1,5 +1,7 @@
 import { NextRequest } from "next/server";
-import { initializeMcpTools, allToolDefinitions, TOOL_MAP, isInitialized } from "@/model/registry/tools";
+import { initializeMcpTools, allToolDefinitions, TOOL_MAP, isInitialized, mcpManager } from "@/model/registry/tools";
+import fs from "fs";
+import path from "path";
 
 export async function GET() {
   try {
@@ -13,11 +15,37 @@ export async function GET() {
       parameters: t.parameters,
     }));
 
+    const clients = mcpManager.getClients();
+    const configPath = path.resolve(process.cwd(), "mcp_config.json");
+    const configuredServers: string[] = [];
+    if (fs.existsSync(configPath)) {
+      try {
+        const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+        if (config.mcpServers) {
+          configuredServers.push(...Object.keys(config.mcpServers));
+        }
+      } catch (e) {
+        console.error("Failed to parse mcp_config.json for status check:", e);
+      }
+    }
+
+    const servers = configuredServers.map((name) => {
+      const isConnected = clients.has(name);
+      return {
+        name,
+        status: isConnected ? "Online" : "Offline",
+        color: isConnected 
+          ? (name === "strava" ? "orange" : name === "github" ? "blue" : "green")
+          : "red",
+      };
+    });
+
     return new Response(
       JSON.stringify({
         initialized: isInitialized,
         totalTools: tools.length,
         tools,
+        servers,
       }),
       {
         status: 200,
