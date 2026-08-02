@@ -38,6 +38,11 @@ function toGeminiMessages(messages: ChatMessage[]) {
     parts: [{ text: m.content }],
   }));
 
+  // Gemini startChat history must start with a 'user' message. If the first message is from 'model', drop it.
+  while (history.length > 0 && history[0].role === "model") {
+    history.shift();
+  }
+
   return { systemInstruction, history };
 }
 
