@@ -84,15 +84,68 @@ export async function POST(req: NextRequest) {
           detectedMode = await router.detectIntent(lastMessage.content);
         }
 
+        // Initialize MCP tools if not already initialized
+        if (!isInitialized) {
+          try {
+            await initializeMcpTools();
+          } catch (mcpErr) {
+            console.error("Failed to initialize MCP tools during chat:", mcpErr);
+          }
+        }
+
         try {
           await vectorStore.load();
           // Concentric Ring 1: Category-filtered search based on routed memory type
           const memoryType = await router.route(lastMessage.content);
           const targetCategory = getCategoryForMemoryType(memoryType);
 
-          let results = await vectorStore.search(lastMessage.content, 10, {
+          const dbSearchPromise = vectorStore.search(lastMessage.content, 10, {
             category: targetCategory,
           });
+
+          let mcpSearchPromise = Promise.resolve("");
+          if (targetCategory === "dynamic") {
+            const dynamicMcpTasks: Promise<string>[] = [];
+            const registeredTools = registry.listTools();
+            
+            const stravaTool = registeredTools.find((t) => t.name === "strava_get_activities" || t.name === "strava_get_recent_activities");
+            const githubTool = registeredTools.find((t) => t.name === "github_list_repositories");
+            const presenceTool = registeredTools.find((t) => t.name === "presence-monitor_get_presence_status");
+
+            if (stravaTool) {
+              dynamicMcpTasks.push(
+                stravaTool.execute({ limit: 5 })
+                  .then((res) => `Strava Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`)
+                  .catch(() => "")
+              );
+            }
+            if (githubTool) {
+              dynamicMcpTasks.push(
+                githubTool.execute({})
+                  .then((res) => `GitHub Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`)
+                  .catch(() => "")
+              );
+            }
+            if (presenceTool) {
+              dynamicMcpTasks.push(
+                presenceTool.execute({})
+                  .then((res) => `Presence Monitor Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`)
+                  .catch(() => "")
+              );
+            }
+
+            if (dynamicMcpTasks.length > 0) {
+              mcpSearchPromise = Promise.all(dynamicMcpTasks).then((resultsArray) => {
+                return resultsArray.filter(Boolean).join("\n---\n");
+              });
+            }
+          }
+
+          const [resultsVal, mcpContent] = await Promise.all([
+            dbSearchPromise,
+            mcpSearchPromise
+          ]);
+          let results = resultsVal;
 
           // Concentric Ring 2: Fallback to global/static search if Ring 1 returns no matches
           if (results.length === 0 && targetCategory !== "static") {
@@ -101,13 +154,19 @@ export async function POST(req: NextRequest) {
             });
           }
 
-          if (results.length > 0) {
+          if (results.length > 0 || mcpContent) {
             const retrievedContent = results
               .map((r) => r.doc.content)
               .join("\n---\n");
-            contextString = `\n\nRelevant Context:\n${retrievedContent}`;
+            
+            const combinedContent = [
+              retrievedContent,
+              mcpContent
+            ].filter(Boolean).join("\n---\n");
+
+            contextString = `\n\nRelevant Context:\n${combinedContent}`;
             console.log(
-              `Retrieved ${results.length} relevant documents for category "${targetCategory}".`,
+              `Retrieved ${results.length} DB records for category "${targetCategory}" (Real-time MCP: ${!!mcpContent}).`,
             );
           }
         } catch (err) {
@@ -144,6 +203,8 @@ export async function POST(req: NextRequest) {
     let finalResponseText = "";
     let ranAgent = false;
 
+    const lastUserMessage = messages.length > 0 ? messages[messages.length - 1].content : "";
+
     if (isGroqProvider) {
       try {
         let agentResponse = await runAgentLoop(
@@ -155,10 +216,13 @@ export async function POST(req: NextRequest) {
         // Grounding guardrail check for Groq
         if (contextString.trim().length > 0) {
           const grounding = await verifyGrounding(contextString, agentResponse, selectedProvider);
+          await vectorStore.logHallucination(lastUserMessage, agentResponse, grounding.safe, grounding.feedback);
           if (!grounding.safe) {
             console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
             const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
             agentResponse = await runAgentLoop(correctivePrompt, conversationMessages);
+            const finalGrounding = await verifyGrounding(contextString, agentResponse, selectedProvider);
+            await vectorStore.logHallucination(lastUserMessage, agentResponse, finalGrounding.safe, finalGrounding.feedback);
           }
         }
         finalResponseText = agentResponse;
@@ -181,10 +245,13 @@ export async function POST(req: NextRequest) {
           // Grounding guardrail check for JSON agent
           if (contextString.trim().length > 0) {
             const grounding = await verifyGrounding(contextString, agentResponse, selectedProvider);
+            await vectorStore.logHallucination(lastUserMessage, agentResponse, grounding.safe, grounding.feedback);
             if (!grounding.safe) {
               console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
               const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
               agentResponse = await runJsonAgentLoop(llmProvider, correctivePrompt, conversationMessages);
+              const finalGrounding = await verifyGrounding(contextString, agentResponse, selectedProvider);
+              await vectorStore.logHallucination(lastUserMessage, agentResponse, finalGrounding.safe, finalGrounding.feedback);
             }
           }
           finalResponseText = agentResponse;
@@ -211,6 +278,7 @@ export async function POST(req: NextRequest) {
         // Grounding guardrail check for fallback
         if (contextString.trim().length > 0) {
           const grounding = await verifyGrounding(contextString, fallbackResponse, selectedProvider);
+          await vectorStore.logHallucination(lastUserMessage, fallbackResponse, grounding.safe, grounding.feedback);
           if (!grounding.safe) {
             console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
             const correctionMessages = [
@@ -222,6 +290,8 @@ export async function POST(req: NextRequest) {
             ];
             const correctedRes = await llmProvider.chat(correctionMessages);
             fallbackResponse = correctedRes.content;
+            const finalGrounding = await verifyGrounding(contextString, fallbackResponse, selectedProvider);
+            await vectorStore.logHallucination(lastUserMessage, fallbackResponse, finalGrounding.safe, finalGrounding.feedback);
           }
         }
         finalResponseText = fallbackResponse;
