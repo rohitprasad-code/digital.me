@@ -166,6 +166,48 @@ async function ingest() {
                     }
                   }
 
+                  let occurredAt = new Date();
+                  try {
+                    const parsedContent = typeof content === "string" ? JSON.parse(content) : content;
+                    if (parsedContent) {
+                      let items: Record<string, unknown>[] = [];
+                      if (Array.isArray(parsedContent)) {
+                        items = parsedContent as Record<string, unknown>[];
+                      } else if (typeof parsedContent === "object" && parsedContent !== null) {
+                        const rec = parsedContent as Record<string, unknown>;
+                        items = (Array.isArray(rec.repositories)
+                          ? rec.repositories
+                          : Array.isArray(rec.activities)
+                          ? rec.activities
+                          : []) as Record<string, unknown>[];
+                      }
+                      
+                      if (items.length > 0) {
+                        let latestTime = 0;
+                        for (const item of items) {
+                          const dateStr = (item.start_date || item.updated_at || item.created_at || item.date) as string | undefined;
+                          if (dateStr) {
+                            const t = new Date(dateStr).getTime();
+                            if (t > latestTime) {
+                              latestTime = t;
+                            }
+                          }
+                        }
+                        if (latestTime > 0) {
+                          occurredAt = new Date(latestTime);
+                        }
+                      } else if (typeof parsedContent === "object" && parsedContent !== null) {
+                        const rec = parsedContent as Record<string, unknown>;
+                        const dateStr = (rec.start_date || rec.updated_at || rec.created_at || rec.date) as string | undefined;
+                        if (dateStr) {
+                          occurredAt = new Date(dateStr);
+                        }
+                      }
+                    }
+                  } catch {
+                    // Fallback to current time
+                  }
+
                   const { contentText, rawData } = transformMcpDataToNarrative(content, serverName, task.tool, task);
                   const mcpCategory = serverName === "strava" ? "dynamic" : "static";
                   await pipeline.syncDocument(contentText, {
@@ -173,6 +215,7 @@ async function ingest() {
                     category: mcpCategory,
                     title: task.title || `${serverName} ${task.tool}`,
                     rawData,
+                    occurredAt: occurredAt.toISOString(),
                   });
                   log.success(`✓ Ingested ${task.tool} via MCP tool`);
                 }
