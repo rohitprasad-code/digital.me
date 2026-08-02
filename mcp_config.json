@@ -48,7 +48,30 @@
         "-y",
         "@rp-x/web-mcp-server"
       ],
-      "env": {}
+      "env": {},
+      "ingest": [
+        {
+          "tool": "search",
+          "args": {},
+          "source": "search",
+          "title": "Web Search"
+        }
+      ]
+    },
+    "presence-monitor": {
+      "command": "node",
+      "args": [
+        "/Users/rohitprasad/Backup/mcp-s/presence-mcp-server/dist/server.js"
+      ],
+      "env": {},
+      "ingest": [
+        {
+          "tool": "get_presence_status",
+          "args": {},
+          "source": "presence",
+          "title": "Presence Status"
+        }
+      ]
     }
   }
 }

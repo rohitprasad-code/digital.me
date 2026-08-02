@@ -1,15 +1,124 @@
 {
   "profile": {
     "name": "Rohit Prasad",
-    "role": "Software Developer",
+    "role": "Product Developer",
     "bio": "I am a passionate developer building my Digital Me. I love coding, running, and exploring new technologies.",
-    "location": "India"
+    "location": "Ranchi, Jharkhand, India",
+    "email": "rohitcomp123@gmail.com",
+    "phone": "+91 87970 97430",
+    "website": "https://rohitprasad.dev",
+    "github": "https://github.com/rohitprasad-code",
+    "linkedin": "https://www.linkedin.com/in/rohitprasad1709",
+    "resume": "https://rohitprasad.dev/resume.pdf"
   },
-  "skills": ["Python", "AI/ML"],
-  "interests": ["Running", "Tech"],
+  "education": [
+    {
+      "institution": "Kalinga Institute of Industrial Technology, Bhubaneswar, OD",
+      "degree": "B.Tech in Computer Science and Engineering",
+      "duration": "2020 - 2024",
+      "score": "88.2%"
+    }
+  ],
+  "experience": [
+    {
+      "role": "Product Engineer",
+      "company": "Tata Consultancy Services Limited (TCS)",
+      "location": "Pune, MH",
+      "duration": "Nov 2024 - Present",
+      "highlights": [
+        "Developed a proactive monitoring framework that reduced unplanned downtime by 30% during traffic spikes and improved platform reliability.",
+        "Designed and implemented the configuration service that fetches metadata from a global database into the monitoring application, enabling monitoring of integrated applications.",
+        "Built the Silent Period Module, enabling configurable time-based alert suppression (daily, weekly, monthly), minimizing alert fatigue by 40%.",
+        "Configured email-based alert notifications using iON's internal mailing system to notify stakeholders based on severity levels (info, warning, critical).",
+        "Integrated scheduler-based pulling architecture, fetching transactional data from integrated applications hourly and processing it for trigger threshold checks resulting in early anomaly detection.",
+        "Initiated auto-remediation support by enabling alert-triggered execution of pre-configured scripts for infrastructure scaling and recovery to reduce manual intervention during high-load incidents."
+      ]
+    },
+    {
+      "role": "Analytics and Machine Learning Intern",
+      "company": "HighRadius Technologies",
+      "location": "Hyderabad, TS",
+      "duration": "Aug 2023 - Jan 2024",
+      "highlights": [
+        "Implemented a dynamic search feature in Dot-One, resulting in a 30% increase in user engagement and an improvement in accessibility.",
+        "Introduced a chatbot system to address client queries, leading to improved client interactions and issue resolution.",
+        "Integrated an AI model for predicting invoice order amounts, implementing regression techniques and leveraging a comprehensive dataset for accurate predictions."
+      ]
+    }
+  ],
+  "projects": [
+    {
+      "name": "Covid19 Detection from X-ray image",
+      "technologies": ["Python", "TensorFlow", "CNN"],
+      "description": "Developed a COVID-19 detection model using deep learning and CNNs on X-ray images for early diagnosis, supporting healthcare professionals in pandemic management.",
+      "url": "https://github.com/rohitprasad-code/covid19-detection-xray"
+    },
+    {
+      "name": "AI-Enabled FinTech B2B Invoice Management Application",
+      "technologies": ["ReactJS", "SQL", "Java", "JDBC"],
+      "description": "Developed an AI-powered FinTech B2B invoice app, streamlining CRUD operations and automating invoice handling to improve business efficiency.",
+      "url": "https://github.com/rohitprasad-code/fintech-invoice-management"
+    }
+  ],
+  "skills": {
+    "languages": ["C", "C++", "Python", "Java", "SQL", "JavaScript", "TypeScript", "HTML", "CSS"],
+    "frameworks": ["Flask", "Bootstrap", "Next.js", "ReactJS", "Node.js"],
+    "libraries": ["NumPy", "Matplotlib", "TensorFlow", "Scikit-learn", "Pandas", "Open-CV"],
+    "databases": ["PostgreSQL", "MySQL", "SQLite", "MongoDB"],
+    "core": ["Object Oriented Programming (OOP)", "Machine Learning (ML)", "Data Structures and Algorithms (DSA)", "Database Management", "Software Development", "Automation"]
+  },
+  "tools_and_platforms": {
+    "operating_system": "macOS / Linux",
+    "editors_ides": ["VS Code", "Cursor"],
+    "vcs": ["Git", "GitHub"],
+    "deployment": ["Vercel", "Docker"]
+  },
+  "interests": [
+    {
+      "name": "Running & Cycling",
+      "detail": "Active runner and cyclist, tracking runs and workouts on Strava."
+    },
+    {
+      "name": "Tech & AI/ML",
+      "detail": "Building LLM integrations, AI agents, and local development helper tools."
+    },
+    {
+      "name": "Product Building",
+      "detail": "Creating full-stack applications and automating manual workflows."
+    },
+    {
+      "name": "Photography",
+      "detail": "Casual landscape and street photography."
+    }
+  ],
   "goals": [
     "Build a Digital Me that can answer questions on my behalf",
     "Automate personal data aggregation",
     "Learn advanced AI patterns"
-  ]
+  ],
+  "languages_spoken": [
+    "English",
+    "Hindi"
+  ],
+  "social_handles": {
+    "github": "https://github.com/rohitprasad-code",
+    "linkedin": "https://www.linkedin.com/in/rohitprasad1709",
+    "leetcode": "https://leetcode.com/rohitprasad-code",
+    "twitter": "https://x.com/rohitprasad"
+  },
+  "preferences": {
+    "work_mode": "Hybrid / Remote / On-site",
+    "preferred_locations": [
+      "Pune",
+      "Ranchi",
+      "Bengaluru",
+      "Remote"
+    ],
+    "desired_roles": [
+      "Product Developer",
+      "Product Engineer",
+      "Full Stack Developer",
+      "AI Engineer"
+    ]
+  }
 }
