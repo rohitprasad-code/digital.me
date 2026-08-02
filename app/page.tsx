@@ -5,6 +5,7 @@ import { Flex, Heading, Text, Box } from "@radix-ui/themes";
 import { ChatInterface } from "./components/ChatInterface";
 import { ContextSelector, Mode } from "./components/ContextSelector";
 import { IntegrationStatus } from "./components/IntegrationStatus";
+import { McpTestPanel } from "./components/McpTestPanel";
 import { WeeklyReport } from "./components/WeeklyReport";
 
 export default function Dashboard() {
@@ -61,6 +62,7 @@ export default function Dashboard() {
               <Flex direction="column" gap="5">
                 <ContextSelector mode={mode} setMode={setMode} />
                 <IntegrationStatus />
+                <McpTestPanel />
               </Flex>
               <WeeklyReport />
             </Flex>
