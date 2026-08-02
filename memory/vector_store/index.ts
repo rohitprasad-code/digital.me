@@ -54,4 +54,7 @@ export class VectorStore implements IVectorStore {
   async clear() {
     return this.store.clear();
   }
+  async logHallucination(query: string, response: string, isSafe: boolean, feedback?: string) {
+    return this.store.logHallucination(query, response, isSafe, feedback);
+  }
 }

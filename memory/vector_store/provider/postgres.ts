@@ -21,13 +21,14 @@ export class PostgresVectorStore {
     const db = getDb();
     try {
       const rows =
-        await db`SELECT id, file_path, content, metadata, last_updated_at FROM document_chunks`;
+        await db`SELECT id, file_path, content, metadata, last_updated_at, occurred_at FROM document_chunks`;
       return rows.map((row) => ({
         id: row.id,
         filePath: row.file_path,
         content: row.content,
         metadata: row.metadata,
         lastUpdatedAt: row.last_updated_at,
+        occurredAt: row.occurred_at,
       }));
     } catch (e) {
       console.error("Failed to get all documents:", e);
@@ -94,12 +95,16 @@ export class PostgresVectorStore {
         (metadata.filePath as string) || (metadata.path as string) || "unknown";
     }
 
+    const occurredAtVal = metadata.occurredAt
+      ? new Date(metadata.occurredAt as string | Date)
+      : new Date();
+
     try {
       await db`
-        INSERT INTO document_chunks (id, file_path, content, metadata, embedding)
-        VALUES (${id}, ${filePath}, ${content}, ${JSON.stringify(metadata)}::jsonb, ${JSON.stringify(embedding)}::vector)
+        INSERT INTO document_chunks (id, file_path, content, metadata, embedding, occurred_at)
+        VALUES (${id}, ${filePath}, ${content}, ${JSON.stringify(metadata)}::jsonb, ${JSON.stringify(embedding)}::vector, ${occurredAtVal})
         ON CONFLICT ((metadata->>'_contentHash')) 
-        DO UPDATE SET last_updated_at = NOW()
+        DO UPDATE SET last_updated_at = NOW(), occurred_at = EXCLUDED.occurred_at
       `;
     } catch (error) {
       console.error("Failed to insert document into Neon:", error);
@@ -111,6 +116,7 @@ export class PostgresVectorStore {
       content,
       metadata,
       lastUpdatedAt: new Date(),
+      occurredAt: occurredAtVal,
     };
   }
 
@@ -146,6 +152,7 @@ export class PostgresVectorStore {
             content, 
             metadata, 
             last_updated_at,
+            occurred_at,
             1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
           FROM document_chunks
           WHERE metadata->>'category' = ${categoryVal}
@@ -160,6 +167,7 @@ export class PostgresVectorStore {
             content, 
             metadata, 
             last_updated_at,
+            occurred_at,
             1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
           FROM document_chunks
           WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
@@ -175,6 +183,7 @@ export class PostgresVectorStore {
           content: row.content,
           metadata: row.metadata,
           lastUpdatedAt: row.last_updated_at,
+          occurredAt: row.occurred_at,
         },
         score: parseFloat(row.score),
       }));
@@ -200,15 +209,49 @@ export class PostgresVectorStore {
           content TEXT NOT NULL,
           metadata JSONB NOT NULL DEFAULT '{}',
           embedding VECTOR(768),
-          last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
+          last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
+          occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
       `;
+      // Run migration to add occurred_at column if it does not exist
+      await db`ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`;
+
+      // Create hallucination logs table
+      await db`
+        CREATE TABLE IF NOT EXISTS hallucination_logs (
+          id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+          query TEXT NOT NULL,
+          response TEXT NOT NULL,
+          is_safe BOOLEAN NOT NULL,
+          feedback TEXT,
+          created_at TIMESTAMPTZ DEFAULT NOW()
+        );
+      `;
+
       await db`CREATE UNIQUE INDEX IF NOT EXISTS document_chunks_content_hash_idx ON document_chunks ((metadata->>'_contentHash'));`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops);`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_metadata_idx ON document_chunks USING GIN (metadata);`;
+      await db`CREATE INDEX IF NOT EXISTS document_chunks_occurred_at_idx ON document_chunks (occurred_at DESC);`;
       console.log("Vector store successfully initialized.");
     } catch (error) {
       console.error("Failed to initialize database schema:", error);
+    }
+  }
+
+  async logHallucination(
+    query: string,
+    response: string,
+    isSafe: boolean,
+    feedback?: string,
+  ): Promise<void> {
+    const db = getDb();
+    try {
+      await db`
+        INSERT INTO hallucination_logs (query, response, is_safe, feedback)
+        VALUES (${query}, ${response}, ${isSafe}, ${feedback || null})
+      `;
+    } catch (error) {
+      console.error("Failed to log hallucination check to Neon Postgres:", error);
     }
   }
 
@@ -216,6 +259,7 @@ export class PostgresVectorStore {
     const db = getDb();
     try {
       await db`TRUNCATE TABLE document_chunks;`;
+      await db`TRUNCATE TABLE hallucination_logs;`;
       console.log("Vector store cleared.");
     } catch (error) {
       console.error("Failed to clear vector store:", error);

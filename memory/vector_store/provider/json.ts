@@ -80,12 +80,17 @@ export class JsonVectorStore {
         (metadata.filePath as string) || (metadata.path as string) || "unknown";
     }
 
+    const occurredAtVal = metadata.occurredAt
+      ? new Date(metadata.occurredAt as string | Date).toISOString()
+      : strTimestamp;
+
     // Local array deduplication simulating the postgres conflict resolution GC metrics
     const existingIndex = this.documents.findIndex(
       (d) => d.metadata?._contentHash === contentHash,
     );
     if (existingIndex !== -1) {
       this.documents[existingIndex].lastUpdatedAt = strTimestamp;
+      this.documents[existingIndex].occurredAt = occurredAtVal;
       this.documents[existingIndex].metadata._lastUpdatedAt =
         metadata._lastUpdatedAt;
       if (autoSave) {
@@ -101,6 +106,7 @@ export class JsonVectorStore {
       metadata,
       embedding,
       lastUpdatedAt: strTimestamp,
+      occurredAt: occurredAtVal,
     };
 
     this.documents.push(doc);
@@ -223,8 +229,39 @@ export class JsonVectorStore {
     }
   }
 
+  async logHallucination(
+    query: string,
+    response: string,
+    isSafe: boolean,
+    feedback?: string,
+  ): Promise<void> {
+    try {
+      const logFile = path.join(VECTOR_DIR, "hallucination_logs.json");
+      let logs = [];
+      try {
+        const data = await fs.readFile(logFile, "utf-8");
+        logs = JSON.parse(data);
+      } catch {
+        // Ignore and start with empty array
+      }
+      logs.push({
+        id: uuidv4(),
+        query,
+        response,
+        isSafe,
+        feedback: feedback || null,
+        createdAt: new Date().toISOString(),
+      });
+      await fs.writeFile(logFile, JSON.stringify(logs, null, 2));
+    } catch (error) {
+      console.error("Failed to log hallucination check to local JSON:", error);
+    }
+  }
+
   async clear(): Promise<void> {
     this.documents = [];
     await this.save();
+    const logFile = path.join(VECTOR_DIR, "hallucination_logs.json");
+    await fs.unlink(logFile).catch(() => {});
   }
 }

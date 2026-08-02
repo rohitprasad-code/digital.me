@@ -14,6 +14,7 @@ export interface Document {
   metadata: Record<string, unknown>;
   embedding?: number[];
   lastUpdatedAt?: string | Date;
+  occurredAt?: string | Date;
 }
 
 export interface IVectorStore {
@@ -40,4 +41,10 @@ export interface IVectorStore {
   save(): Promise<void>;
   load(): Promise<void>;
   clear(): Promise<void>;
+  logHallucination(
+    query: string,
+    response: string,
+    isSafe: boolean,
+    feedback?: string,
+  ): Promise<void>;
 }
