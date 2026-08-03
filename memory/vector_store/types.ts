@@ -17,6 +17,15 @@ export interface Document {
   occurredAt?: string | Date;
 }
 
+export interface HallucinationLog {
+  id: string;
+  query: string;
+  response: string;
+  isSafe: boolean;
+  feedback: string | null;
+  createdAt: string;
+}
+
 export interface IVectorStore {
   getAllDocuments(): Promise<Document[]> | Document[];
   deleteDocuments(ids: string[]): Promise<void>;
@@ -47,4 +56,9 @@ export interface IVectorStore {
     isSafe: boolean,
     feedback?: string,
   ): Promise<void>;
+  getHallucinations(): Promise<HallucinationLog[]>;
+  getDocumentsByTimeRange(
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Document[]>;
 }

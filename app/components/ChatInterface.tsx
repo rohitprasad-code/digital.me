@@ -47,8 +47,10 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [freeMessagesCount, setFreeMessagesCount] = useState(0);
   const [showAuthForm, setShowAuthForm] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     async function fetchModels() {
       try {
         const res = await fetch("/api/models");
@@ -129,7 +131,8 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
           ...prev,
           {
             role: "assistant",
-            content: "⚠️ Free tier limit reached. Please authenticate in the panel below to unlock unlimited conversations.",
+            content:
+              "⚠️ Free tier limit reached. Please authenticate in the panel below to unlock unlimited conversations.",
           },
         ]);
         return;
@@ -170,6 +173,22 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
       setIsLoading(false);
     }
   };
+
+  if (!mounted) {
+    return (
+      <Card
+        size="3"
+        variant="surface"
+        style={{ height: "100%", display: "flex", flexDirection: "column" }}
+      >
+        <Flex align="center" justify="center" style={{ height: "100%" }}>
+          <Text size="3" color="gray" className="spin">
+            ⏳
+          </Text>
+        </Flex>
+      </Card>
+    );
+  }
 
   return (
     <Card
@@ -261,16 +280,24 @@ export function ChatInterface({ mode, setMode }: ChatInterfaceProps) {
               padding: "20px",
               border: "1px dashed var(--indigo-5)",
               borderRadius: "12px",
-              background: "linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(168, 85, 247, 0.04) 100%)",
+              background:
+                "linear-gradient(135deg, rgba(99, 102, 241, 0.04) 0%, rgba(168, 85, 247, 0.04) 100%)",
               backdropFilter: "blur(4px)",
             }}
           >
-            <Flex direction="column" gap="2" align="center" style={{ textAlign: "center" }}>
+            <Flex
+              direction="column"
+              gap="2"
+              align="center"
+              style={{ textAlign: "center" }}
+            >
               <Text size="3" weight="bold" color="indigo">
                 🔒 Free Message Limit Reached
               </Text>
               <Text size="1" color="gray" style={{ maxWidth: "340px" }}>
-                You have sent all 5 free messages. Unlock unlimited chats with Rohit&apos;s Digital Twin by entering a passcode or an API key below.
+                You have sent all 5 free messages. Unlock unlimited chats with
+                Rohit&apos;s Digital Twin by entering a passcode or an API key
+                below.
               </Text>
               <Flex direction="column" gap="2" width="100%" mt="2">
                 <TextField.Root

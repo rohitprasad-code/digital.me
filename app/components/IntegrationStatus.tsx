@@ -1,13 +1,11 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Card, Flex, Text, Badge, Box } from "@radix-ui/themes";
 import {
   GitHubLogoIcon,
   GlobeIcon,
   ActivityLogIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
 } from "@radix-ui/react-icons";
 
 interface McpServerStatus {
@@ -17,7 +15,6 @@ interface McpServerStatus {
 }
 
 export function IntegrationStatus() {
-  const [isExpanded, setIsExpanded] = useState(true);
   const [servers, setServers] = useState<McpServerStatus[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -63,8 +60,6 @@ export function IntegrationStatus() {
           justify="between"
           align="center"
           className="collapsible-header"
-          style={{ cursor: "pointer" }}
-          onClick={() => setIsExpanded(!isExpanded)}
         >
           <Box>
             <Text as="div" size="3" weight="bold">
@@ -74,39 +69,34 @@ export function IntegrationStatus() {
               Live status of connected MCP servers
             </Text>
           </Box>
-          <Box className="collapsible-icon">
-            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          </Box>
         </Flex>
 
-        {isExpanded && (
-          <Box>
-            {loading ? (
-              <Text size="2" color="gray">Loading status...</Text>
-            ) : servers.length === 0 ? (
-              <Text size="2" color="gray">No MCP integrations configured.</Text>
-            ) : (
-              <Flex direction="column" gap="3">
-                {servers.map((server, idx) => (
-                  <Flex key={idx} justify="between" align="center">
-                    <Flex align="center" gap="2">
-                      <Box style={{ color: `var(--${server.color}-9)` }}>
-                        {getIconForServer(server.name)}
-                      </Box>
-                      <Text size="2" weight="medium">
-                        {getDisplayName(server.name)}
-                      </Text>
-                    </Flex>
-                    {/* @ts-expect-error - Radix UI badge color prop typing workaround */}
-                    <Badge color={server.color} radius="full" variant="soft">
-                      {server.status}
-                    </Badge>
+        <Box>
+          {loading ? (
+            <Text size="2" color="gray">Loading status...</Text>
+          ) : servers.length === 0 ? (
+            <Text size="2" color="gray">No MCP integrations configured.</Text>
+          ) : (
+            <Flex direction="column" gap="3">
+              {servers.map((server, idx) => (
+                <Flex key={idx} justify="between" align="center">
+                  <Flex align="center" gap="2">
+                    <Box style={{ color: `var(--${server.color}-9)` }}>
+                      {getIconForServer(server.name)}
+                    </Box>
+                    <Text size="2" weight="medium">
+                      {getDisplayName(server.name)}
+                    </Text>
                   </Flex>
-                ))}
-              </Flex>
-            )}
-          </Box>
-        )}
+                  {/* @ts-expect-error - Radix UI badge color prop typing workaround */}
+                  <Badge color={server.color} radius="full" variant="soft">
+                    {server.status}
+                  </Badge>
+                </Flex>
+              ))}
+            </Flex>
+          )}
+        </Box>
       </Flex>
     </Card>
   );

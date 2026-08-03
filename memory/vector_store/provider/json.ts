@@ -5,7 +5,7 @@ import fs from "fs/promises";
 import path from "path";
 import crypto from "crypto";
 import { VECTOR_DIR } from "../../../utils/paths";
-import { Document, VectorSearchFilter, MemoryCategory } from "../types";
+import { Document, VectorSearchFilter, MemoryCategory, HallucinationLog } from "../types";
 
 export class JsonVectorStore {
   private documents: Document[] = [];
@@ -256,6 +256,29 @@ export class JsonVectorStore {
     } catch (error) {
       console.error("Failed to log hallucination check to local JSON:", error);
     }
+  }
+
+  async getHallucinations(): Promise<HallucinationLog[]> {
+    try {
+      const logFile = path.join(VECTOR_DIR, "hallucination_logs.json");
+      const data = await fs.readFile(logFile, "utf-8");
+      const logs = JSON.parse(data);
+      return Array.isArray(logs) ? logs.reverse() : [];
+    } catch {
+      return [];
+    }
+  }
+
+  async getDocumentsByTimeRange(
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Document[]> {
+    const startMs = startDate.getTime();
+    const endMs = endDate.getTime();
+    return this.documents.filter((doc) => {
+      const occurredMs = doc.occurredAt ? new Date(doc.occurredAt).getTime() : 0;
+      return occurredMs >= startMs && occurredMs <= endMs;
+    });
   }
 
   async clear(): Promise<void> {

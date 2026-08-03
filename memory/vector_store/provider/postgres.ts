@@ -2,7 +2,7 @@ import { getEmbeddingProvider } from "../../../model/providers/embeddings";
 import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 import postgres from "postgres";
-import { Document, VectorSearchFilter } from "../types";
+import { Document, VectorSearchFilter, HallucinationLog } from "../types";
 
 let sql: postgres.Sql;
 
@@ -252,6 +252,53 @@ export class PostgresVectorStore {
       `;
     } catch (error) {
       console.error("Failed to log hallucination check to Neon Postgres:", error);
+    }
+  }
+
+  async getHallucinations(): Promise<HallucinationLog[]> {
+    const db = getDb();
+    try {
+      const rows = await db`
+        SELECT id, query, response, is_safe as "isSafe", feedback, created_at as "createdAt"
+        FROM hallucination_logs
+        ORDER BY created_at DESC
+      `;
+      return rows.map((row) => ({
+        id: row.id,
+        query: row.query,
+        response: row.response,
+        isSafe: row.isSafe,
+        feedback: row.feedback,
+        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
+      }));
+    } catch (e) {
+      console.error("Failed to fetch hallucination logs from Neon Postgres:", e);
+      return [];
+    }
+  }
+
+  async getDocumentsByTimeRange(
+    startDate: Date,
+    endDate: Date,
+  ): Promise<Document[]> {
+    const db = getDb();
+    try {
+      const rows = await db`
+        SELECT id, file_path, content, metadata, last_updated_at, occurred_at 
+        FROM document_chunks 
+        WHERE occurred_at >= ${startDate} AND occurred_at <= ${endDate}
+      `;
+      return rows.map((row) => ({
+        id: row.id,
+        filePath: row.file_path,
+        content: row.content,
+        metadata: row.metadata,
+        lastUpdatedAt: row.last_updated_at,
+        occurredAt: row.occurred_at,
+      }));
+    } catch (error) {
+      console.error("Failed to get documents by time range from Postgres:", error);
+      return [];
     }
   }
 

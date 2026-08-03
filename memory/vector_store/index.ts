@@ -57,4 +57,10 @@ export class VectorStore implements IVectorStore {
   async logHallucination(query: string, response: string, isSafe: boolean, feedback?: string) {
     return this.store.logHallucination(query, response, isSafe, feedback);
   }
+  async getHallucinations() {
+    return this.store.getHallucinations();
+  }
+  async getDocumentsByTimeRange(startDate: Date, endDate: Date) {
+    return this.store.getDocumentsByTimeRange(startDate, endDate);
+  }
 }

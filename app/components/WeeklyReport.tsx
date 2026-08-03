@@ -16,8 +16,6 @@ import {
   UpdateIcon,
   ReaderIcon,
   CodeIcon,
-  ChevronDownIcon,
-  ChevronUpIcon,
 } from "@radix-ui/react-icons";
 import ReactMarkdown from "react-markdown";
 
@@ -26,7 +24,6 @@ export function WeeklyReport() {
   const [loading, setLoading] = useState(false);
   const [open, setOpen] = useState(false);
   const [viewMode, setViewMode] = useState<"rendered" | "raw">("rendered");
-  const [isExpanded, setIsExpanded] = useState(false);
 
   // Example fetch; real hook would pull from /api/report
   const handleFetchReport = async () => {
@@ -53,7 +50,6 @@ export function WeeklyReport() {
           justify="between"
           align="center"
           className="collapsible-header"
-          onClick={() => setIsExpanded(!isExpanded)}
         >
           <Box>
             <Text as="div" size="3" weight="bold">
@@ -63,12 +59,9 @@ export function WeeklyReport() {
               Automated weekly highlight summaries
             </Text>
           </Box>
-          <Box className="collapsible-icon">
-            {isExpanded ? <ChevronUpIcon /> : <ChevronDownIcon />}
-          </Box>
         </Flex>
 
-        <Box className={isExpanded ? "collapsible-content-open" : "collapsible-content-closed"}>
+        <Box>
           <Flex direction="column" gap="3">
             <Dialog.Root open={open} onOpenChange={setOpen}>
               <Dialog.Trigger>

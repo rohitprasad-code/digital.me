@@ -8,35 +8,44 @@ export type Mode = "default" | "recruiter" | "social";
 interface ContextSelectorProps {
   mode: Mode;
   setMode: (mode: Mode) => void;
+  compact?: boolean;
 }
 
-export function ContextSelector({ mode, setMode }: ContextSelectorProps) {
+export function ContextSelector({ mode, setMode, compact = false }: ContextSelectorProps) {
+  const control = (
+    <SegmentedControl.Root
+      value={mode}
+      onValueChange={(val) => setMode(val as Mode)}
+      size="2"
+    >
+      <SegmentedControl.Item value="default">
+        <Flex align="center" gap="2">
+          <MagicWandIcon /> Auto
+        </Flex>
+      </SegmentedControl.Item>
+      <SegmentedControl.Item value="recruiter">
+        <Flex align="center" gap="2">
+          <BackpackIcon /> Recruiter
+        </Flex>
+      </SegmentedControl.Item>
+      <SegmentedControl.Item value="social">
+        <Flex align="center" gap="2">
+          <PersonIcon /> Friend
+        </Flex>
+      </SegmentedControl.Item>
+    </SegmentedControl.Root>
+  );
+
+  if (compact) {
+    return control;
+  }
+
   return (
     <Flex direction="column" gap="2">
       <Text size="2" weight="bold" color="gray">
         Context Router
       </Text>
-      <SegmentedControl.Root
-        value={mode}
-        onValueChange={(val) => setMode(val as Mode)}
-        size="2"
-      >
-        <SegmentedControl.Item value="default">
-          <Flex align="center" gap="2">
-            <MagicWandIcon /> Auto
-          </Flex>
-        </SegmentedControl.Item>
-        <SegmentedControl.Item value="recruiter">
-          <Flex align="center" gap="2">
-            <BackpackIcon /> Recruiter
-          </Flex>
-        </SegmentedControl.Item>
-        <SegmentedControl.Item value="social">
-          <Flex align="center" gap="2">
-            <PersonIcon /> Friend
-          </Flex>
-        </SegmentedControl.Item>
-      </SegmentedControl.Root>
+      {control}
       <Text size="1" color="gray">
         {mode === "default" &&
           "Automatically routes intent based on your prompt."}

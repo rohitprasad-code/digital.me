@@ -1,52 +1,46 @@
+@import "tailwindcss";
+
 /* THEME & BASE VARIABLES */
 :root {
-  --background: #ffffff;
-  --foreground: #171717;
-  color-scheme: light;
-}
-
-@media (prefers-color-scheme: dark) {
-  :root {
-    --background: #0a0a0a;
-    --foreground: #ededed;
-    color-scheme: dark;
-  }
-}
-
-.dark {
-  --background: #0a0a0a;
-  --foreground: #ededed;
+  --background: #09090b;
+  --foreground: #f4f4f5;
   color-scheme: dark;
 }
 
-/* RENDERING & DOCUMENT LEVEL STYLES */
 body {
-  background: var(--background);
+  background: radial-gradient(circle at top left, #18181b, #09090b 70%);
   color: var(--foreground);
-  font-family: Arial, Helvetica, sans-serif;
+  font-family: var(--font-outfit), sans-serif;
   margin: 0;
-}
-@media (max-width: 480px) {
-  .activity-divider {
-    display: none;
-  }
+  overflow: hidden;
 }
 
+/* Custom Scrollbar Styles for premium feel */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 4px;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.12);
+  border-radius: 4px;
+  transition: background 0.2s ease;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.25);
+}
+
+/* Dashboard Layout & Animations */
 .main-dashboard-wrap {
   min-height: 100vh;
   padding: 16px;
-}
-
-
-.collapsible-icon {
-  margin-left: 8px;
-}
-.collapsible-content-closed {
-  display: none !important;
-}
-.collapsible-header {
-  cursor: pointer;
-  padding: 4px 0;
+  box-sizing: border-box;
 }
 
 @media (min-width: 768px) {
@@ -55,13 +49,31 @@ body {
     padding: 24px;
     overflow: hidden;
   }
-  .collapsible-icon {
-    display: none !important;
+}
+
+.spin {
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  from {
+    transform: rotate(0deg);
   }
-  .collapsible-header {
-    cursor: default !important;
+  to {
+    transform: rotate(360deg);
   }
-  .collapsible-content-closed {
-    display: block !important;
-  }
+}
+
+/* Glassmorphic cards */
+.rt-Card {
+  background-color: rgba(20, 20, 25, 0.6) !important;
+  backdrop-filter: blur(12px) !important;
+  -webkit-backdrop-filter: blur(12px) !important;
+  border: 1px solid rgba(255, 255, 255, 0.06) !important;
+  transition: transform 0.2s ease, border-color 0.2s ease, box-shadow 0.2s ease !important;
+}
+
+.rt-Card:hover {
+  border-color: rgba(99, 102, 241, 0.3) !important;
+  box-shadow: 0 8px 30px rgba(0, 0, 0, 0.4) !important;
 }
