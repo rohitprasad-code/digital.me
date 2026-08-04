@@ -11,11 +11,13 @@ interface HallucinationLog {
   isSafe: boolean;
   feedback: string | null;
   createdAt: string;
+  corrected?: boolean;
 }
 
 export function HallucinationLogs() {
   const [logs, setLogs] = useState<HallucinationLog[]>([]);
   const [loading, setLoading] = useState(true);
+  const [correcting, setCorrecting] = useState(false);
 
   const fetchLogs = async () => {
     setLoading(true);
@@ -29,6 +31,23 @@ export function HallucinationLogs() {
       console.error("Failed to fetch hallucination logs:", err);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const runSelfCorrection = async () => {
+    setCorrecting(true);
+    try {
+      const res = await fetch("/api/hallucinations/correct", {
+        method: "POST"
+      });
+      const data = await res.json();
+      if (data.success) {
+        fetchLogs();
+      }
+    } catch (err) {
+      console.error("Failed to run correction:", err);
+    } finally {
+      setCorrecting(false);
     }
   };
 
@@ -49,9 +68,14 @@ export function HallucinationLogs() {
               Real-time logs from the grounding guardrail middleware showing factual consistency checks.
             </Text>
           </Box>
-          <Button variant="soft" onClick={fetchLogs} disabled={loading}>
-            <ReloadIcon className={loading ? "spin" : ""} /> Refresh
-          </Button>
+          <Flex gap="2">
+            <Button variant="solid" color="indigo" onClick={runSelfCorrection} disabled={correcting || loading}>
+              <ReloadIcon className={correcting ? "spin" : ""} /> {correcting ? "Correcting..." : "Run Self-Correction"}
+            </Button>
+            <Button variant="soft" onClick={fetchLogs} disabled={loading || correcting}>
+              <ReloadIcon className={loading ? "spin" : ""} /> Refresh
+            </Button>
+          </Flex>
         </Flex>
 
         {/* Info Header */}
@@ -96,15 +120,27 @@ export function HallucinationLogs() {
                   key={log.id}
                   variant="surface"
                   style={{
-                    borderLeft: log.isSafe ? "4px solid var(--green-9)" : "4px solid var(--red-9)",
-                    backgroundColor: log.isSafe ? "var(--green-2)" : "var(--red-2)",
+                    borderLeft: log.isSafe
+                      ? "4px solid var(--green-9)"
+                      : log.corrected
+                      ? "4px solid var(--indigo-9)"
+                      : "4px solid var(--red-9)",
+                    backgroundColor: log.isSafe
+                      ? "var(--green-2)"
+                      : log.corrected
+                      ? "var(--indigo-2)"
+                      : "var(--red-2)",
                   }}
                 >
                   <Flex direction="column" gap="2">
                     <Flex justify="between" align="center">
                       <Flex gap="2" align="center">
-                        <Badge color={log.isSafe ? "green" : "red"}>
-                          {log.isSafe ? "Grounded (Passed)" : "Hallucination Detected (Corrected)"}
+                        <Badge color={log.isSafe ? "green" : log.corrected ? "indigo" : "red"}>
+                          {log.isSafe
+                            ? "Grounded (Passed)"
+                            : log.corrected
+                            ? "Hallucination Detected (Corrected)"
+                            : "Hallucination Detected (Pending)"}
                         </Badge>
                         <Text size="1" color="gray">
                           {new Date(log.createdAt).toLocaleString()}

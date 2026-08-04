@@ -224,9 +224,11 @@ export class PostgresVectorStore {
           response TEXT NOT NULL,
           is_safe BOOLEAN NOT NULL,
           feedback TEXT,
-          created_at TIMESTAMPTZ DEFAULT NOW()
+          created_at TIMESTAMPTZ DEFAULT NOW(),
+          corrected BOOLEAN DEFAULT FALSE
         );
       `;
+      await db`ALTER TABLE hallucination_logs ADD COLUMN IF NOT EXISTS corrected BOOLEAN DEFAULT FALSE;`;
 
       await db`CREATE UNIQUE INDEX IF NOT EXISTS document_chunks_content_hash_idx ON document_chunks ((metadata->>'_contentHash'));`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops);`;
@@ -259,7 +261,7 @@ export class PostgresVectorStore {
     const db = getDb();
     try {
       const rows = await db`
-        SELECT id, query, response, is_safe as "isSafe", feedback, created_at as "createdAt"
+        SELECT id, query, response, is_safe as "isSafe", feedback, created_at as "createdAt", corrected
         FROM hallucination_logs
         ORDER BY created_at DESC
       `;
@@ -270,10 +272,24 @@ export class PostgresVectorStore {
         isSafe: row.isSafe,
         feedback: row.feedback,
         createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
+        corrected: !!row.corrected,
       }));
     } catch (e) {
       console.error("Failed to fetch hallucination logs from Neon Postgres:", e);
       return [];
+    }
+  }
+
+  async markHallucinationCorrected(id: string): Promise<void> {
+    const db = getDb();
+    try {
+      await db`
+        UPDATE hallucination_logs
+        SET corrected = TRUE
+        WHERE id = ${id}
+      `;
+    } catch (error) {
+      console.error("Failed to mark hallucination corrected in Neon Postgres:", error);
     }
   }
 

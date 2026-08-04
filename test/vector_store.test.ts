@@ -1,4 +1,5 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
+import { VectorStore, IVectorStore } from "../memory/vector_store";
 import { JsonVectorStore } from "../memory/vector_store/provider/json";
 import * as embeddings from "../model/providers/embeddings";
 
@@ -49,5 +50,20 @@ describe("JsonVectorStore Category Filtering", () => {
     const defaultResults = await store.search("anything", 10);
     expect(defaultResults.length).toBe(2);
     expect(defaultResults.some((r) => r.doc.metadata.category === "system")).toBe(false);
+  });
+});
+
+describe("VectorStore Wrapper Delegation", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+  });
+
+  it("should delegate markHallucinationCorrected to the underlying store", async () => {
+    const store = new VectorStore("test_store.json");
+    const spy = vi.spyOn((store as unknown as { store: IVectorStore }).store, "markHallucinationCorrected").mockResolvedValue(undefined);
+    
+    await store.markHallucinationCorrected("test-id-123");
+    
+    expect(spy).toHaveBeenCalledWith("test-id-123");
   });
 });

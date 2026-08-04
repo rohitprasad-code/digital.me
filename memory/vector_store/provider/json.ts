@@ -269,6 +269,23 @@ export class JsonVectorStore {
     }
   }
 
+  async markHallucinationCorrected(id: string): Promise<void> {
+    try {
+      const logFile = path.join(VECTOR_DIR, "hallucination_logs.json");
+      const data = await fs.readFile(logFile, "utf-8");
+      const logs = JSON.parse(data);
+      if (Array.isArray(logs)) {
+        const index = logs.findIndex((log: HallucinationLog) => log.id === id);
+        if (index !== -1) {
+          logs[index].corrected = true;
+          await fs.writeFile(logFile, JSON.stringify(logs, null, 2));
+        }
+      }
+    } catch (error) {
+      console.error("Failed to mark hallucination corrected in local JSON:", error);
+    }
+  }
+
   async getDocumentsByTimeRange(
     startDate: Date,
     endDate: Date,

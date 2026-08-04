@@ -60,6 +60,9 @@ export class VectorStore implements IVectorStore {
   async getHallucinations() {
     return this.store.getHallucinations();
   }
+  async markHallucinationCorrected(id: string) {
+    return this.store.markHallucinationCorrected(id);
+  }
   async getDocumentsByTimeRange(startDate: Date, endDate: Date) {
     return this.store.getDocumentsByTimeRange(startDate, endDate);
   }

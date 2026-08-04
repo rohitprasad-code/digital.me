@@ -24,6 +24,7 @@ export interface HallucinationLog {
   isSafe: boolean;
   feedback: string | null;
   createdAt: string;
+  corrected?: boolean;
 }
 
 export interface IVectorStore {
@@ -57,6 +58,7 @@ export interface IVectorStore {
     feedback?: string,
   ): Promise<void>;
   getHallucinations(): Promise<HallucinationLog[]>;
+  markHallucinationCorrected(id: string): Promise<void>;
   getDocumentsByTimeRange(
     startDate: Date,
     endDate: Date,
