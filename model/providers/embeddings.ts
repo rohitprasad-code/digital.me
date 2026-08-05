@@ -1,5 +1,6 @@
 export interface EmbeddingProvider {
   embed(text: string): Promise<number[]>;
+  embedBatch?(texts: string[]): Promise<number[][]>;
 }
 
 class FallbackEmbeddingProvider implements EmbeddingProvider {
@@ -68,6 +69,33 @@ class FallbackEmbeddingProvider implements EmbeddingProvider {
     }
     throw new Error(
       `All embedding providers failed. Last error: ${
+        lastError instanceof Error ? lastError.message : String(lastError)
+      }`
+    );
+  }
+
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    let lastError: unknown = null;
+    for (const p of this.providers) {
+      try {
+        const providerInstance = p.getProvider();
+        if (providerInstance.embedBatch) {
+          return await providerInstance.embedBatch(texts);
+        }
+        // Fallback if not natively supported: map concurrently
+        return await Promise.all(texts.map((t) => providerInstance.embed(t)));
+      } catch (err) {
+        console.warn(
+          `Embedding provider "${p.name}" batch failed: ${
+            err instanceof Error ? err.message : String(err)
+          }. Trying fallback...`
+        );
+        lastError = err;
+      }
+    }
+    throw new Error(
+      `All embedding providers failed for batch. Last error: ${
         lastError instanceof Error ? lastError.message : String(lastError)
       }`
     );

@@ -31,6 +31,20 @@ export class VectorStore implements IVectorStore {
   async deleteStaleDocuments(daysStale: number) {
     return this.store.deleteStaleDocuments(daysStale);
   }
+  async addDocumentsWithEmbeddings(
+    documents: { content: string; embedding: number[]; metadata: Record<string, unknown> }[]
+  ) {
+    if (this.store.addDocumentsWithEmbeddings) {
+      return this.store.addDocumentsWithEmbeddings(documents);
+    }
+    const results = [];
+    for (const doc of documents) {
+      const res = await this.store.addDocumentWithEmbedding(doc.content, doc.embedding, doc.metadata);
+      results.push(res);
+    }
+    return results;
+  }
+
   async addDocumentWithEmbedding(
     c: string,
     e: number[],

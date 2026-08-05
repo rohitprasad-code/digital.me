@@ -32,6 +32,9 @@ export interface IVectorStore {
   deleteDocuments(ids: string[]): Promise<void>;
   deleteStaleDocuments(daysStale: number): Promise<number>;
   setDocuments?(docs: Document[]): void;
+  addDocumentsWithEmbeddings?(
+    documents: { content: string; embedding: number[]; metadata: Record<string, unknown> }[]
+  ): Promise<Document[]>;
   addDocumentWithEmbedding(
     content: string,
     embedding: number[],

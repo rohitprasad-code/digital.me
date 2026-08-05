@@ -120,4 +120,21 @@ export class GeminiEmbeddingProvider implements EmbeddingProvider {
     } as unknown as Parameters<typeof model.embedContent>[0]);
     return result.embedding.values;
   }
+
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const genAI = getGenAI();
+    const modelName = process.env.GEMINI_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    const result = await model.batchEmbedContents({
+      requests: texts.map((text) => ({
+        model: modelName,
+        content: { role: "user", parts: [{ text }] },
+        outputDimensionality: 768,
+      })),
+    } as unknown as Parameters<typeof model.batchEmbedContents>[0]);
+
+    return result.embeddings.map((e) => e.values);
+  }
 }

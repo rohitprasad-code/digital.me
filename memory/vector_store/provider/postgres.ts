@@ -9,7 +9,11 @@ let sql: postgres.Sql;
 function getDb() {
   if (!sql) {
     const dbUrl = (process.env.DATABASE_URL || "").replace(/^['"]|['"]$/g, "");
-    sql = postgres(dbUrl, { ssl: "require" });
+    sql = postgres(dbUrl, {
+      ssl: "require",
+      max: 10,
+      idle_timeout: 15,
+    });
   }
   return sql;
 }
@@ -67,6 +71,77 @@ export class PostgresVectorStore {
     }
   }
 
+  async addDocumentsWithEmbeddings(
+    documents: { content: string; embedding: number[]; metadata: Record<string, unknown> }[]
+  ): Promise<Document[]> {
+    if (documents.length === 0) return [];
+    const db = getDb();
+
+    const preparedDocs = documents.map((doc) => {
+      const id = uuidv4();
+      const contentHash =
+        (doc.metadata._contentHash as string) ||
+        crypto.createHash("sha256").update(doc.content).digest("hex");
+
+      const metadata: Record<string, unknown> = { ...doc.metadata, _contentHash: contentHash };
+
+      let filePath = "unknown";
+      const source = metadata.source as string;
+      if (source) {
+        if (["github", "linkedin", "strava"].includes(source.toLowerCase())) {
+          filePath = `api://${source.toLowerCase()}/${metadata.type || "data"}`;
+        } else {
+          filePath = `file://${source}`;
+        }
+      } else {
+        filePath =
+          (metadata.filePath as string) || (metadata.path as string) || "unknown";
+      }
+
+      const occurredAtVal = metadata.occurredAt
+        ? new Date(metadata.occurredAt as string | Date)
+        : new Date();
+
+      return {
+        id,
+        filePath,
+        content: doc.content,
+        metadata,
+        embedding: doc.embedding,
+        occurredAt: occurredAtVal,
+      };
+    });
+
+    try {
+      await db`
+        INSERT INTO document_chunks (id, file_path, content, metadata, embedding, occurred_at)
+        VALUES ${db(
+          preparedDocs.map((doc) => [
+            doc.id,
+            doc.filePath,
+            doc.content,
+            JSON.stringify(doc.metadata),
+            JSON.stringify(doc.embedding),
+            doc.occurredAt.toISOString(),
+          ])
+        )}
+        ON CONFLICT ((metadata->>'_contentHash')) 
+        DO UPDATE SET last_updated_at = NOW(), occurred_at = EXCLUDED.occurred_at
+      `;
+    } catch (error) {
+      console.error("Failed to insert batch of documents into Neon:", error);
+    }
+
+    return preparedDocs.map((d) => ({
+      id: d.id,
+      filePath: d.filePath,
+      content: d.content,
+      metadata: d.metadata,
+      lastUpdatedAt: new Date(),
+      occurredAt: d.occurredAt,
+    }));
+  }
+
   async addDocumentWithEmbedding(
     content: string,
     embedding: number[],
@@ -74,50 +149,8 @@ export class PostgresVectorStore {
     _autoSave?: boolean,
   ): Promise<Document> {
     void _autoSave;
-    const db = getDb();
-    const id = uuidv4();
-    const contentHash =
-      (metadata._contentHash as string) ||
-      crypto.createHash("sha256").update(content).digest("hex");
-
-    metadata._contentHash = contentHash;
-
-    let filePath = "unknown";
-    const source = metadata.source as string;
-    if (source) {
-      if (["github", "linkedin", "strava"].includes(source.toLowerCase())) {
-        filePath = `api://${source.toLowerCase()}/${metadata.type || "data"}`;
-      } else {
-        filePath = `file://${source}`;
-      }
-    } else {
-      filePath =
-        (metadata.filePath as string) || (metadata.path as string) || "unknown";
-    }
-
-    const occurredAtVal = metadata.occurredAt
-      ? new Date(metadata.occurredAt as string | Date)
-      : new Date();
-
-    try {
-      await db`
-        INSERT INTO document_chunks (id, file_path, content, metadata, embedding, occurred_at)
-        VALUES (${id}, ${filePath}, ${content}, ${JSON.stringify(metadata)}::jsonb, ${JSON.stringify(embedding)}::vector, ${occurredAtVal})
-        ON CONFLICT ((metadata->>'_contentHash')) 
-        DO UPDATE SET last_updated_at = NOW(), occurred_at = EXCLUDED.occurred_at
-      `;
-    } catch (error) {
-      console.error("Failed to insert document into Neon:", error);
-    }
-
-    return {
-      id,
-      filePath,
-      content,
-      metadata,
-      lastUpdatedAt: new Date(),
-      occurredAt: occurredAtVal,
-    };
+    const results = await this.addDocumentsWithEmbeddings([{ content, embedding, metadata }]);
+    return results[0];
   }
 
   async addDocument(
@@ -130,6 +163,61 @@ export class PostgresVectorStore {
     return this.addDocumentWithEmbedding(content, embedding, metadata, autoSave);
   }
 
+  private async pureVectorSearch(
+    queryEmbedding: number[],
+    limit: number,
+    filter?: VectorSearchFilter,
+  ): Promise<{ doc: Document; score: number }[]> {
+    const db = getDb();
+    let rows;
+    if (filter && filter.category) {
+      const categoryVal = Array.isArray(filter.category)
+        ? filter.category[0]
+        : filter.category;
+      rows = await db`
+        SELECT 
+          id, 
+          file_path,
+          content, 
+          metadata, 
+          last_updated_at,
+          occurred_at,
+          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
+        FROM document_chunks
+        WHERE metadata->>'category' = ${categoryVal}
+        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+        LIMIT ${limit}
+      `;
+    } else {
+      rows = await db`
+        SELECT 
+          id, 
+          file_path,
+          content, 
+          metadata, 
+          last_updated_at,
+          occurred_at,
+          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
+        FROM document_chunks
+        WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
+        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+        LIMIT ${limit}
+      `;
+    }
+
+    return rows.map((row) => ({
+      doc: {
+        id: row.id,
+        filePath: row.file_path,
+        content: row.content,
+        metadata: row.metadata,
+        lastUpdatedAt: row.last_updated_at,
+        occurredAt: row.occurred_at,
+      },
+      score: parseFloat(row.score),
+    }));
+  }
+
   async search(
     query: string,
     limit: number = 3,
@@ -140,38 +228,85 @@ export class PostgresVectorStore {
     const queryEmbedding = await embeddingProvider.embed(query);
 
     try {
+      const cleanQuery = query.replace(/[^\w\s-]/g, " ").trim();
+      if (!cleanQuery) {
+        return this.pureVectorSearch(queryEmbedding, limit, filter);
+      }
+
       let rows;
       if (filter && filter.category) {
         const categoryVal = Array.isArray(filter.category)
           ? filter.category[0]
           : filter.category;
         rows = await db`
+          WITH vector_search AS (
+            SELECT 
+              id, 
+              row_number() OVER (ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS rank
+            FROM document_chunks
+            WHERE metadata->>'category' = ${categoryVal}
+            ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+            LIMIT ${limit * 4}
+          ),
+          text_search AS (
+            SELECT 
+              id, 
+              row_number() OVER (ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC) AS rank
+            FROM document_chunks
+            WHERE metadata->>'category' = ${categoryVal}
+              AND to_tsvector('english', content) @@ websearch_to_tsquery('english', ${cleanQuery})
+            ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC
+            LIMIT ${limit * 4}
+          )
           SELECT 
-            id, 
-            file_path,
-            content, 
-            metadata, 
-            last_updated_at,
-            occurred_at,
-            1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
-          FROM document_chunks
-          WHERE metadata->>'category' = ${categoryVal}
-          ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+            dc.id, 
+            dc.file_path, 
+            dc.content, 
+            dc.metadata, 
+            dc.last_updated_at,
+            dc.occurred_at,
+            COALESCE(1.0 / (60.0 + vs.rank), 0.0) + COALESCE(1.0 / (60.0 + ts.rank), 0.0) AS score
+          FROM document_chunks dc
+          LEFT JOIN vector_search vs ON dc.id = vs.id
+          LEFT JOIN text_search ts ON dc.id = ts.id
+          WHERE vs.id IS NOT NULL OR ts.id IS NOT NULL
+          ORDER BY score DESC
           LIMIT ${limit}
         `;
       } else {
         rows = await db`
+          WITH vector_search AS (
+            SELECT 
+              id, 
+              row_number() OVER (ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS rank
+            FROM document_chunks
+            WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
+            ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+            LIMIT ${limit * 4}
+          ),
+          text_search AS (
+            SELECT 
+              id, 
+              row_number() OVER (ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC) AS rank
+            FROM document_chunks
+            WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
+              AND to_tsvector('english', content) @@ websearch_to_tsquery('english', ${cleanQuery})
+            ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC
+            LIMIT ${limit * 4}
+          )
           SELECT 
-            id, 
-            file_path,
-            content, 
-            metadata, 
-            last_updated_at,
-            occurred_at,
-            1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
-          FROM document_chunks
-          WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
-          ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+            dc.id, 
+            dc.file_path, 
+            dc.content, 
+            dc.metadata, 
+            dc.last_updated_at,
+            dc.occurred_at,
+            COALESCE(1.0 / (60.0 + vs.rank), 0.0) + COALESCE(1.0 / (60.0 + ts.rank), 0.0) AS score
+          FROM document_chunks dc
+          LEFT JOIN vector_search vs ON dc.id = vs.id
+          LEFT JOIN text_search ts ON dc.id = ts.id
+          WHERE vs.id IS NOT NULL OR ts.id IS NOT NULL
+          ORDER BY score DESC
           LIMIT ${limit}
         `;
       }
@@ -188,8 +323,8 @@ export class PostgresVectorStore {
         score: parseFloat(row.score),
       }));
     } catch (error) {
-      console.error("Search failed in Neon:", error);
-      return [];
+      console.warn("Hybrid search (RRF) failed, falling back to vector search:", error);
+      return this.pureVectorSearch(queryEmbedding, limit, filter);
     }
   }
 
@@ -213,8 +348,6 @@ export class PostgresVectorStore {
           occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
       `;
-      // Run migration to add occurred_at column if it does not exist
-      await db`ALTER TABLE document_chunks ADD COLUMN IF NOT EXISTS occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW();`;
 
       // Create hallucination logs table
       await db`
@@ -228,12 +361,12 @@ export class PostgresVectorStore {
           corrected BOOLEAN DEFAULT FALSE
         );
       `;
-      await db`ALTER TABLE hallucination_logs ADD COLUMN IF NOT EXISTS corrected BOOLEAN DEFAULT FALSE;`;
 
       await db`CREATE UNIQUE INDEX IF NOT EXISTS document_chunks_content_hash_idx ON document_chunks ((metadata->>'_contentHash'));`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_embedding_idx ON document_chunks USING hnsw (embedding vector_cosine_ops);`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_metadata_idx ON document_chunks USING GIN (metadata);`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_occurred_at_idx ON document_chunks (occurred_at DESC);`;
+      await db`CREATE INDEX IF NOT EXISTS document_chunks_content_fts_idx ON document_chunks USING gin(to_tsvector('english', content));`;
       console.log("Vector store successfully initialized.");
     } catch (error) {
       console.error("Failed to initialize database schema:", error);

@@ -5,6 +5,7 @@ import type {
   ChatOptions,
   ChatResponse,
 } from "../provider";
+import type { EmbeddingProvider } from "../embeddings";
 
 function getGroqClient(): Groq {
   const apiKey = process.env.GROQ_API_KEY;
@@ -73,7 +74,7 @@ export class GroqProvider implements LLMProvider {
 
 const DEFAULT_EMBEDDING_MODEL = "nomic-embed-text-v1_5";
 
-export class GroqEmbeddingProvider {
+export class GroqEmbeddingProvider implements EmbeddingProvider {
   async embed(text: string): Promise<number[]> {
     const groq = getGroqClient();
     const modelName =
@@ -85,5 +86,19 @@ export class GroqEmbeddingProvider {
     });
 
     return response.data[0].embedding as number[];
+  }
+
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const groq = getGroqClient();
+    const modelName =
+      process.env.GROQ_EMBEDDING_MODEL || DEFAULT_EMBEDDING_MODEL;
+
+    const response = await groq.embeddings.create({
+      input: texts,
+      model: modelName,
+    });
+
+    return response.data.map((d) => d.embedding as number[]);
   }
 }

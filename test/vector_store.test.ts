@@ -1,7 +1,15 @@
 import { describe, it, expect, vi, beforeEach } from "vitest";
 import { VectorStore, IVectorStore } from "../memory/vector_store";
 import { JsonVectorStore } from "../memory/vector_store/provider/json";
+import { PostgresVectorStore } from "../memory/vector_store/provider/postgres";
 import * as embeddings from "../model/providers/embeddings";
+
+const mockSql = vi.fn().mockImplementation(() => Promise.resolve([]));
+vi.mock("postgres", () => {
+  return {
+    default: vi.fn().mockImplementation(() => mockSql),
+  };
+});
 
 const mockEmbedder = {
   embed: vi.fn().mockImplementation(async () => [1, 0, 0]),
@@ -65,5 +73,38 @@ describe("VectorStore Wrapper Delegation", () => {
     await store.markHallucinationCorrected("test-id-123");
     
     expect(spy).toHaveBeenCalledWith("test-id-123");
+  });
+});
+
+describe("PostgresVectorStore addDocumentsWithEmbeddings", () => {
+  beforeEach(() => {
+    mockSql.mockClear();
+  });
+
+  it("should parse filePath/source metadata and generate content hashes correctly", async () => {
+    const store = new PostgresVectorStore();
+    const documents = [
+      {
+        content: "Hello from github",
+        embedding: [0.1, 0.2],
+        metadata: { source: "github", type: "issues" },
+      },
+      {
+        content: "Hello from local file",
+        embedding: [0.3, 0.4],
+        metadata: { filePath: "src/index.ts" },
+      },
+    ];
+
+    const result = await store.addDocumentsWithEmbeddings(documents);
+
+    expect(result.length).toBe(2);
+    expect(result[0].filePath).toBe("api://github/issues");
+    expect(result[0].metadata._contentHash).toBeDefined();
+    
+    expect(result[1].filePath).toBe("src/index.ts");
+    expect(result[1].metadata._contentHash).toBeDefined();
+
+    expect(mockSql).toHaveBeenCalled();
   });
 });

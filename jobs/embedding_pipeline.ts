@@ -96,6 +96,92 @@ export class EmbeddingPipeline {
   }
 
   /**
+   * Syncs a batch of documents concurrently/incrementally.
+   * Leverages batch embedding APIs and bulk database insertion.
+   */
+  async syncDocuments(
+    batch: { content: string; metadata: Record<string, unknown>; rawSource?: string }[]
+  ): Promise<Document[]> {
+    if (batch.length === 0) return [];
+
+    const allDocs = await this.getAllDocs();
+    const existingProviderDocs = allDocs.filter(
+      (doc) => doc.metadata?._embeddedBy === this.currentProvider
+    );
+
+    const docsToEmbed: { content: string; enrichedMetadata: Record<string, unknown>; index: number }[] = [];
+    const results: Document[] = new Array(batch.length);
+
+    for (let i = 0; i < batch.length; i++) {
+      const item = batch[i];
+      const inputForHashing = item.rawSource || item.content;
+      const contentHash = this.generateHash(inputForHashing, item.metadata);
+
+      const enrichedMetadata = {
+        category: item.metadata.category || "static",
+        ...item.metadata,
+        _contentHash: contentHash,
+        _embeddedBy: this.currentProvider,
+      };
+
+      this.seenContentHashes.add(contentHash);
+
+      const existingDoc = existingProviderDocs.find(
+        (doc) => doc.metadata?._contentHash === contentHash
+      );
+
+      if (existingDoc && existingDoc.embedding && existingDoc.embedding.length > 0) {
+        results[i] = existingDoc;
+      } else {
+        docsToEmbed.push({
+          content: item.content,
+          enrichedMetadata,
+          index: i,
+        });
+      }
+    }
+
+    if (docsToEmbed.length > 0) {
+      try {
+        const embeddingProvider = getEmbeddingProvider();
+        let embeddings: number[][];
+
+        if (embeddingProvider.embedBatch) {
+          embeddings = await embeddingProvider.embedBatch(docsToEmbed.map((d) => d.content));
+        } else {
+          embeddings = await Promise.all(
+            docsToEmbed.map((d) => embeddingProvider.embed(d.content))
+          );
+        }
+
+        const insertPayload = docsToEmbed.map((d, i) => ({
+          content: d.content,
+          embedding: embeddings[i],
+          metadata: d.enrichedMetadata,
+        }));
+
+        const newDocs = await this.vectorStore.addDocumentsWithEmbeddings(insertPayload);
+
+        if (this.allDocsCache) {
+          this.allDocsCache.push(...newDocs);
+        }
+
+        for (let i = 0; i < docsToEmbed.length; i++) {
+          const originalIndex = docsToEmbed[i].index;
+          results[originalIndex] = newDocs[i];
+        }
+      } catch (error) {
+        log.error(
+          "Failed to embed document batch",
+          error instanceof Error ? error.message : "Unknown error"
+        );
+      }
+    }
+
+    return results.filter(Boolean);
+  }
+
+  /**
    * Cleans up any old documents that are no longer actively accessed or updated.
    * This uses the natively updating `last_updated_at` column driven by the Postgres ON CONFLICT strategy.
    */

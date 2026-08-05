@@ -57,4 +57,24 @@ export class OllamaEmbeddingProvider implements EmbeddingProvider {
     });
     return response.embedding;
   }
+
+  async embedBatch(texts: string[]): Promise<number[][]> {
+    if (texts.length === 0) return [];
+    const limit = 5;
+    const results: number[][] = [];
+    for (let i = 0; i < texts.length; i += limit) {
+      const chunk = texts.slice(i, i + limit);
+      const chunkResults = await Promise.all(
+        chunk.map(async (text) => {
+          const response = await ollama.embeddings({
+            model: DEFAULT_EMBEDDING_MODEL,
+            prompt: text,
+          });
+          return response.embedding;
+        })
+      );
+      results.push(...chunkResults);
+    }
+    return results;
+  }
 }
