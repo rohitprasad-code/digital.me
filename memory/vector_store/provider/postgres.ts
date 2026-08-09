@@ -476,7 +476,7 @@ export class PostgresVectorStore {
   async close(): Promise<void> {
     if (sql) {
       await sql.end();
-      sql = undefined as any;
+      sql = undefined as unknown as postgres.Sql;
       console.log("Neon Postgres Vector Store connection pool ended.");
     }
   }
