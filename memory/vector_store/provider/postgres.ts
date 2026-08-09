@@ -336,18 +336,32 @@ export class PostgresVectorStore {
     const db = getDb();
     console.log("Initializing Neon Postgres Vector Store schemas...");
     try {
+      let dimension = 768;
+      try {
+        const embeddingProvider = getEmbeddingProvider();
+        const testVector = await embeddingProvider.embed("dimension_detection_ping");
+        if (testVector && testVector.length > 0) {
+          dimension = testVector.length;
+          console.log(`Auto-detected embedding dimension: ${dimension}`);
+        }
+      } catch (err) {
+        console.warn("Failed to auto-detect embedding dimensions, falling back to default (768):", err);
+      }
+
       await db`CREATE EXTENSION IF NOT EXISTS vector;`;
-      await db`
+      
+      // Use unsafe raw query because the dimension parameter must be interpolated structurally
+      await db.unsafe(`
         CREATE TABLE IF NOT EXISTS document_chunks (
           id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
           file_path TEXT NOT NULL DEFAULT 'unknown',
           content TEXT NOT NULL,
           metadata JSONB NOT NULL DEFAULT '{}',
-          embedding VECTOR(768),
+          embedding VECTOR(${dimension}),
           last_updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
           occurred_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
         );
-      `;
+      `);
 
       // Create hallucination logs table
       await db`

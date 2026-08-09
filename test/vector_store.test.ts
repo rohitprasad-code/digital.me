@@ -108,3 +108,30 @@ describe("PostgresVectorStore addDocumentsWithEmbeddings", () => {
     expect(mockSql).toHaveBeenCalled();
   });
 });
+
+describe("JsonVectorStore concurrent atomic writes", () => {
+  it("should handle multiple concurrent saves without throwing and should complete atomically", async () => {
+    const store = new JsonVectorStore("test_concurrent_store.json");
+    store.setDocuments([
+      { id: "1", content: "Doc 1", metadata: {}, embedding: [1, 0, 0] }
+    ]);
+
+    // Perform concurrent saves
+    const savePromises = Array.from({ length: 10 }).map((_, i) => {
+      // Mutate documents to simulate rapid changes
+      store.setDocuments([
+        { id: "1", content: `Doc 1 version ${i}`, metadata: {}, embedding: [1, 0, 0] }
+      ]);
+      return store.save();
+    });
+
+    await expect(Promise.all(savePromises)).resolves.not.toThrow();
+
+    // Verify loading back gets the last written state or works cleanly
+    const verifyStore = new JsonVectorStore("test_concurrent_store.json");
+    await verifyStore.load();
+    const docs = await verifyStore.getAllDocuments();
+    expect(docs.length).toBe(1);
+    expect(docs[0].content).toMatch(/Doc 1 version/);
+  });
+});

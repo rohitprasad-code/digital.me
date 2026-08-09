@@ -11,6 +11,7 @@ export class JsonVectorStore {
   private documents: Document[] = [];
   private readonly storageFile: string;
   private lastMTimeMs: number = 0;
+  private saveQueue: Promise<void> = Promise.resolve();
 
   constructor(storageFile: string = "embedded_vectors.json") {
     this.storageFile = path.join(VECTOR_DIR, storageFile);
@@ -177,19 +178,30 @@ export class JsonVectorStore {
   }
 
   async save(): Promise<void> {
-    try {
-      await fs.mkdir(path.dirname(this.storageFile), { recursive: true });
-      await fs.writeFile(
-        this.storageFile,
-        JSON.stringify(this.documents, null, 2),
-      );
-      const stats = await fs.stat(this.storageFile).catch(() => null);
-      if (stats) {
-        this.lastMTimeMs = stats.mtimeMs;
+    // Chain onto the write queue to serialize all concurrent save operations
+    this.saveQueue = this.saveQueue.then(async () => {
+      try {
+        await fs.mkdir(path.dirname(this.storageFile), { recursive: true });
+        
+        // Write to a temporary file in the same directory
+        const tempPath = `${this.storageFile}.tmp-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+        await fs.writeFile(
+          tempPath,
+          JSON.stringify(this.documents, null, 2),
+        );
+        
+        // Perform atomic rename to overwrite the target file safely
+        await fs.rename(tempPath, this.storageFile);
+        
+        const stats = await fs.stat(this.storageFile).catch(() => null);
+        if (stats) {
+          this.lastMTimeMs = stats.mtimeMs;
+        }
+      } catch (error) {
+        console.error("Failed to save vector store:", error);
       }
-    } catch (error) {
-      console.error("Failed to save vector store:", error);
-    }
+    });
+    return this.saveQueue;
   }
 
   async load(): Promise<void> {
