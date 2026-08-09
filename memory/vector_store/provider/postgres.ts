@@ -169,53 +169,63 @@ export class PostgresVectorStore {
     filter?: VectorSearchFilter,
   ): Promise<{ doc: Document; score: number }[]> {
     const db = getDb();
-    let rows;
-    if (filter && filter.category) {
-      const categoryVal = Array.isArray(filter.category)
-        ? filter.category[0]
-        : filter.category;
-      rows = await db`
-        SELECT 
-          id, 
-          file_path,
-          content, 
-          metadata, 
-          last_updated_at,
-          occurred_at,
-          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
-        FROM document_chunks
-        WHERE metadata->>'category' = ${categoryVal}
-        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
-        LIMIT ${limit}
-      `;
-    } else {
-      rows = await db`
-        SELECT 
-          id, 
-          file_path,
-          content, 
-          metadata, 
-          last_updated_at,
-          occurred_at,
-          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
-        FROM document_chunks
-        WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
-        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
-        LIMIT ${limit}
-      `;
-    }
 
-    return rows.map((row) => ({
-      doc: {
-        id: row.id,
-        filePath: row.file_path,
-        content: row.content,
-        metadata: row.metadata,
-        lastUpdatedAt: row.last_updated_at,
-        occurredAt: row.occurred_at,
-      },
-      score: parseFloat(row.score),
-    }));
+    const categoryVal = filter?.category
+      ? (Array.isArray(filter.category) ? filter.category : [filter.category])
+      : null;
+    const hasCategory = !!categoryVal;
+
+    const excludeCategories = filter?.excludeCategory && filter.excludeCategory.length > 0
+      ? filter.excludeCategory
+      : null;
+    const hasExclude = !!excludeCategories;
+
+    const extraFilters: Record<string, unknown> = {};
+    if (filter) {
+      for (const [key, value] of Object.entries(filter)) {
+        if (key !== "category" && key !== "excludeCategory") {
+          extraFilters[key] = value;
+        }
+      }
+    }
+    const hasExtra = Object.keys(extraFilters).length > 0;
+    const extraFiltersJson = hasExtra ? JSON.stringify(extraFilters) : "{}";
+
+    try {
+      const rows = await db`
+        SELECT 
+          id, 
+          file_path,
+          content, 
+          metadata, 
+          last_updated_at,
+          occurred_at,
+          1 - (embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS score
+        FROM document_chunks
+        WHERE 
+          (${hasCategory} = FALSE OR metadata->>'category' = ANY(${categoryVal}))
+          AND (${hasExclude} = FALSE OR metadata->>'category' IS NULL OR NOT (metadata->>'category' = ANY(${excludeCategories})))
+          AND (${hasExtra} = FALSE OR metadata @> ${extraFiltersJson}::jsonb)
+          AND (${!hasCategory && !hasExclude} = FALSE OR metadata->>'category' IS NULL OR metadata->>'category' != 'system')
+        ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+        LIMIT ${limit}
+      `;
+
+      return rows.map((row) => ({
+        doc: {
+          id: row.id,
+          filePath: row.file_path,
+          content: row.content,
+          metadata: row.metadata,
+          lastUpdatedAt: row.last_updated_at,
+          occurredAt: row.occurred_at,
+        },
+        score: parseFloat(row.score),
+      }));
+    } catch (e) {
+      console.error("Failed pure vector search:", e);
+      return [];
+    }
   }
 
   async search(
@@ -233,83 +243,70 @@ export class PostgresVectorStore {
         return this.pureVectorSearch(queryEmbedding, limit, filter);
       }
 
-      let rows;
-      if (filter && filter.category) {
-        const categoryVal = Array.isArray(filter.category)
-          ? filter.category[0]
-          : filter.category;
-        rows = await db`
-          WITH vector_search AS (
-            SELECT 
-              id, 
-              row_number() OVER (ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS rank
-            FROM document_chunks
-            WHERE metadata->>'category' = ${categoryVal}
-            ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
-            LIMIT ${limit * 4}
-          ),
-          text_search AS (
-            SELECT 
-              id, 
-              row_number() OVER (ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC) AS rank
-            FROM document_chunks
-            WHERE metadata->>'category' = ${categoryVal}
-              AND to_tsvector('english', content) @@ websearch_to_tsquery('english', ${cleanQuery})
-            ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC
-            LIMIT ${limit * 4}
-          )
-          SELECT 
-            dc.id, 
-            dc.file_path, 
-            dc.content, 
-            dc.metadata, 
-            dc.last_updated_at,
-            dc.occurred_at,
-            COALESCE(1.0 / (60.0 + vs.rank), 0.0) + COALESCE(1.0 / (60.0 + ts.rank), 0.0) AS score
-          FROM document_chunks dc
-          LEFT JOIN vector_search vs ON dc.id = vs.id
-          LEFT JOIN text_search ts ON dc.id = ts.id
-          WHERE vs.id IS NOT NULL OR ts.id IS NOT NULL
-          ORDER BY score DESC
-          LIMIT ${limit}
-        `;
-      } else {
-        rows = await db`
-          WITH vector_search AS (
-            SELECT 
-              id, 
-              row_number() OVER (ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS rank
-            FROM document_chunks
-            WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
-            ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
-            LIMIT ${limit * 4}
-          ),
-          text_search AS (
-            SELECT 
-              id, 
-              row_number() OVER (ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC) AS rank
-            FROM document_chunks
-            WHERE (metadata->>'category' IS NULL OR metadata->>'category' != 'system')
-              AND to_tsvector('english', content) @@ websearch_to_tsquery('english', ${cleanQuery})
-            ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC
-            LIMIT ${limit * 4}
-          )
-          SELECT 
-            dc.id, 
-            dc.file_path, 
-            dc.content, 
-            dc.metadata, 
-            dc.last_updated_at,
-            dc.occurred_at,
-            COALESCE(1.0 / (60.0 + vs.rank), 0.0) + COALESCE(1.0 / (60.0 + ts.rank), 0.0) AS score
-          FROM document_chunks dc
-          LEFT JOIN vector_search vs ON dc.id = vs.id
-          LEFT JOIN text_search ts ON dc.id = ts.id
-          WHERE vs.id IS NOT NULL OR ts.id IS NOT NULL
-          ORDER BY score DESC
-          LIMIT ${limit}
-        `;
+      const categoryVal = filter?.category
+        ? (Array.isArray(filter.category) ? filter.category : [filter.category])
+        : null;
+      const hasCategory = !!categoryVal;
+
+      const excludeCategories = filter?.excludeCategory && filter.excludeCategory.length > 0
+        ? filter.excludeCategory
+        : null;
+      const hasExclude = !!excludeCategories;
+
+      const extraFilters: Record<string, unknown> = {};
+      if (filter) {
+        for (const [key, value] of Object.entries(filter)) {
+          if (key !== "category" && key !== "excludeCategory") {
+            extraFilters[key] = value;
+          }
+        }
       }
+      const hasExtra = Object.keys(extraFilters).length > 0;
+      const extraFiltersJson = hasExtra ? JSON.stringify(extraFilters) : "{}";
+
+      const rows = await db`
+        WITH vector_search AS (
+          SELECT 
+            id, 
+            row_number() OVER (ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector) AS rank
+          FROM document_chunks
+          WHERE 
+            (${hasCategory} = FALSE OR metadata->>'category' = ANY(${categoryVal}))
+            AND (${hasExclude} = FALSE OR metadata->>'category' IS NULL OR NOT (metadata->>'category' = ANY(${excludeCategories})))
+            AND (${hasExtra} = FALSE OR metadata @> ${extraFiltersJson}::jsonb)
+            AND (${!hasCategory && !hasExclude} = FALSE OR metadata->>'category' IS NULL OR metadata->>'category' != 'system')
+          ORDER BY embedding <=> ${JSON.stringify(queryEmbedding)}::vector
+          LIMIT ${limit * 4}
+        ),
+        text_search AS (
+          SELECT 
+            id, 
+            row_number() OVER (ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC) AS rank
+          FROM document_chunks
+          WHERE 
+            (${hasCategory} = FALSE OR metadata->>'category' = ANY(${categoryVal}))
+            AND (${hasExclude} = FALSE OR metadata->>'category' IS NULL OR NOT (metadata->>'category' = ANY(${excludeCategories})))
+            AND (${hasExtra} = FALSE OR metadata @> ${extraFiltersJson}::jsonb)
+            AND (${!hasCategory && !hasExclude} = FALSE OR metadata->>'category' IS NULL OR metadata->>'category' != 'system')
+            AND to_tsvector('english', content) @@ websearch_to_tsquery('english', ${cleanQuery})
+          ORDER BY ts_rank_cd(to_tsvector('english', content), websearch_to_tsquery('english', ${cleanQuery})) DESC
+          LIMIT ${limit * 4}
+        )
+        SELECT 
+          dc.id, 
+          dc.file_path, 
+          dc.content, 
+          dc.metadata, 
+          dc.last_updated_at,
+          dc.occurred_at,
+          COALESCE(1.0 / (60.0 + vs.rank), 0.0) + COALESCE(1.0 / (60.0 + ts.rank), 0.0) AS score
+        FROM document_chunks dc
+        LEFT JOIN vector_search vs ON dc.id = vs.id
+        LEFT JOIN text_search ts ON dc.id = ts.id
+        WHERE vs.id IS NOT NULL OR ts.id IS NOT NULL
+        ORDER BY score DESC
+        LIMIT ${limit}
+      `;
 
       return rows.map((row) => ({
         doc: {
@@ -473,6 +470,14 @@ export class PostgresVectorStore {
       console.log("Vector store cleared.");
     } catch (error) {
       console.error("Failed to clear vector store:", error);
+    }
+  }
+
+  async close(): Promise<void> {
+    if (sql) {
+      await sql.end();
+      sql = undefined as any;
+      console.log("Neon Postgres Vector Store connection pool ended.");
     }
   }
 }

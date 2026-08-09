@@ -80,4 +80,9 @@ export class VectorStore implements IVectorStore {
   async getDocumentsByTimeRange(startDate: Date, endDate: Date) {
     return this.store.getDocumentsByTimeRange(startDate, endDate);
   }
+  async close() {
+    if (this.store.close) {
+      await this.store.close();
+    }
+  }
 }

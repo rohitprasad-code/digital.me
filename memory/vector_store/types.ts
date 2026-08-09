@@ -66,4 +66,6 @@ export interface IVectorStore {
     startDate: Date,
     endDate: Date,
   ): Promise<Document[]>;
+  close?(): Promise<void>;
 }
+

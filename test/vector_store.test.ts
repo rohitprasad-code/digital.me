@@ -135,3 +135,82 @@ describe("JsonVectorStore concurrent atomic writes", () => {
     expect(docs[0].content).toMatch(/Doc 1 version/);
   });
 });
+
+describe("JsonVectorStore generic metadata filtering & hybrid search", () => {
+  beforeEach(() => {
+    vi.restoreAllMocks();
+    vi.spyOn(embeddings, "getEmbeddingProvider").mockReturnValue(mockEmbedder);
+  });
+
+  it("should match multiple dynamic metadata key-value filters", async () => {
+    const store = new JsonVectorStore("test_filter_store.json");
+    store.setDocuments([
+      {
+        id: "1",
+        content: "Developer resume",
+        metadata: { category: "static", level: "senior", location: "US" },
+        embedding: [1, 0, 0],
+      },
+      {
+        id: "2",
+        content: "Designer portfolio",
+        metadata: { category: "static", level: "junior", location: "US" },
+        embedding: [1, 0, 0],
+      },
+      {
+        id: "3",
+        content: "Manager logs",
+        metadata: { category: "static", level: "senior", location: "EU" },
+        embedding: [1, 0, 0],
+      },
+    ]);
+
+    // Query with multi-key filter
+    const results = await store.search("resume", 10, {
+      category: "static",
+      level: "senior",
+      location: "US",
+    });
+
+    expect(results.length).toBe(1);
+    expect(results[0].doc.id).toBe("1");
+  });
+
+  it("should perform Reciprocal Rank Fusion (RRF) combining vector and text similarity", async () => {
+    const store = new JsonVectorStore("test_rrf_store.json");
+    
+    // We mock two documents:
+    // doc A has high keyword match (contains "javascript developer") but different embedding
+    // doc B has lower keyword match but exact embedding match
+    store.setDocuments([
+      {
+        id: "A",
+        content: "Javascript developer role with React and Node.js expertise",
+        metadata: { category: "static" },
+        embedding: [0.1, 0.9, 0.0], // vector far from query embedding [1, 0, 0]
+      },
+      {
+        id: "B",
+        content: "Other content",
+        metadata: { category: "static" },
+        embedding: [1.0, 0.0, 0.0], // exact match for mockEmbedder [1, 0, 0]
+      },
+    ]);
+
+    // Query with "javascript developer" - should get hits in text rank for A, and vector rank for B
+    const results = await store.search("javascript developer", 10);
+    
+    expect(results.length).toBe(2);
+    // Since both docs rank #1 in one of the fields (A in text, B in vector), they will both have positive scores
+    expect(results[0].score).toBeGreaterThan(0);
+    expect(results[1].score).toBeGreaterThan(0);
+  });
+});
+
+describe("VectorStore wrapper close", () => {
+  it("should successfully call close on the wrapper delegating to the store", async () => {
+    const store = new VectorStore("test_store.json");
+    // Ensure it doesn't throw
+    await expect(store.close()).resolves.not.toThrow();
+  });
+});

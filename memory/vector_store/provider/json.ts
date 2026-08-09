@@ -138,6 +138,7 @@ export class JsonVectorStore {
     let docsToSearch = this.documents;
 
     if (filter) {
+      // 1. category inclusion
       if (filter.category) {
         const allowedCategories = Array.isArray(filter.category)
           ? filter.category
@@ -147,6 +148,7 @@ export class JsonVectorStore {
         );
       }
 
+      // 2. category exclusion
       if (filter.excludeCategory && filter.excludeCategory.length > 0) {
         docsToSearch = docsToSearch.filter(
           (doc) =>
@@ -156,25 +158,74 @@ export class JsonVectorStore {
         );
       }
 
-      if (filter.source) {
-        docsToSearch = docsToSearch.filter(
-          (doc) => doc.metadata?.source === filter.source,
-        );
-      }
+      // 3. generic other dynamic filters
+      docsToSearch = docsToSearch.filter((doc) => {
+        for (const [key, val] of Object.entries(filter)) {
+          if (key === "category" || key === "excludeCategory") continue;
+          if (doc.metadata?.[key] !== val) return false;
+        }
+        return true;
+      });
     } else {
       // By default exclude system internal documents from query context
       docsToSearch = docsToSearch.filter((doc) => doc.metadata?.category !== "system");
     }
 
-    const scoredDocs = docsToSearch.map((doc) => {
+    if (docsToSearch.length === 0) {
+      return [];
+    }
+
+    // Tokenize query to perform text matching
+    const queryTokens = query.toLowerCase().replace(/[^\w\s-]/g, " ").split(/\s+/).filter(Boolean);
+
+    // 1. Calculate Vector Scores & Ranks
+    const vectorScored = docsToSearch.map((doc) => {
       if (!doc.embedding) return { doc, score: -1 };
-      const score =
-        computeCosineSimilarity(queryEmbedding, doc.embedding) || -1;
-      return { doc, score };
+      const similarity = computeCosineSimilarity(queryEmbedding, doc.embedding) || -1;
+      return { doc, score: similarity };
+    });
+    vectorScored.sort((a, b) => b.score - a.score);
+    const vectorRankMap = new Map<string, number>();
+    vectorScored.forEach((item, index) => {
+      vectorRankMap.set(item.doc.id, index + 1);
     });
 
-    scoredDocs.sort((a, b) => b.score - a.score);
-    return scoredDocs.slice(0, limit);
+    // 2. Calculate Text Scores & Ranks
+    const textScored = docsToSearch.map((doc) => {
+      const docContentLower = doc.content.toLowerCase();
+      let matchCount = 0;
+      for (const token of queryTokens) {
+        if (docContentLower.includes(token)) {
+          matchCount++;
+        }
+      }
+      return { doc, score: matchCount };
+    });
+    const matchedTextScored = queryTokens.length > 0
+      ? textScored.filter(item => item.score > 0)
+      : [];
+    matchedTextScored.sort((a, b) => b.score - a.score);
+    const textRankMap = new Map<string, number>();
+    matchedTextScored.forEach((item, index) => {
+      textRankMap.set(item.doc.id, index + 1);
+    });
+
+    // 3. Merge Ranks using RRF (Reciprocal Rank Fusion)
+    const finalScored = docsToSearch.map((doc) => {
+      const vRank = vectorRankMap.get(doc.id);
+      const tRank = textRankMap.get(doc.id);
+
+      const vScore = vRank ? (1.0 / (60.0 + vRank)) : 0.0;
+      const tScore = tRank ? (1.0 / (60.0 + tRank)) : 0.0;
+
+      return {
+        doc,
+        score: vScore + tScore,
+      };
+    });
+
+    finalScored.sort((a, b) => b.score - a.score);
+    return finalScored.slice(0, limit);
   }
 
   async save(): Promise<void> {
@@ -315,5 +366,9 @@ export class JsonVectorStore {
     await this.save();
     const logFile = path.join(VECTOR_DIR, "hallucination_logs.json");
     await fs.unlink(logFile).catch(() => {});
+  }
+
+  async close(): Promise<void> {
+    // No-op for local JSON store
   }
 }
