@@ -14,6 +14,10 @@ export async function verifyGrounding(
   const systemPrompt = `You are a strict factual grounding checker. Your job is to verify if the Assistant's Response is fully grounded in and supported by the provided Context.
 Analyze each claim in the response carefully.
 
+Guidelines:
+- Do not flag natural conversational bridge assumptions as unsafe (e.g., assuming the user is on their Mac/computer when the context shows active desktop apps like 'Brave Browser', or using default pronouns/names).
+- Only flag concrete factual contradictions or entirely unsupported specific external facts (like claiming a job, project, or sport activity not supported by the context).
+
 Context:
 ${context}
 

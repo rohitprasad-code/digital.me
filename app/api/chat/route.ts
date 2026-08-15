@@ -13,6 +13,7 @@ import { initializeMcpTools, isInitialized } from "@/model/registry/tools";
 import { registry } from "@/model/registry/unified";
 
 import { verifyGrounding } from "@/model/middleware/grounding";
+import me from "@/public/codes/me.json";
 
 const vectorStore = new VectorStore();
 const router = new MemoryRouter();
@@ -205,6 +206,11 @@ export async function POST(req: NextRequest) {
 
     const lastUserMessage = messages.length > 0 ? messages[messages.length - 1].content : "";
 
+    const meRecord = me as Record<string, unknown>;
+    const systemMeta = meRecord.system && typeof meRecord.system === "object"
+      ? `[System Metadata]: The user (Rohit) uses a ${(meRecord.system as Record<string, string>).device || "Mac"} running ${(meRecord.system as Record<string, string>).os || "macOS"}.\n\n`
+      : "";
+
     if (isGroqProvider) {
       try {
         const toolOutputs: string[] = [];
@@ -217,9 +223,9 @@ export async function POST(req: NextRequest) {
 
         // Grounding guardrail check for Groq
         if (contextString.trim().length > 0) {
-          const verificationContext = toolOutputs.length > 0
+          const verificationContext = systemMeta + (toolOutputs.length > 0
             ? `${contextString}\n\nReal-time Tool Outputs:\n${toolOutputs.join("\n")}`
-            : contextString;
+            : contextString);
           const grounding = await verifyGrounding(verificationContext, agentResponse, selectedProvider);
           await vectorStore.logHallucination(lastUserMessage, agentResponse, grounding.safe, grounding.feedback);
           if (!grounding.safe) {
@@ -227,9 +233,9 @@ export async function POST(req: NextRequest) {
             const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
             const correctiveToolOutputs: string[] = [];
             agentResponse = await runAgentLoop(correctivePrompt, conversationMessages, correctiveToolOutputs);
-            const correctiveVerificationContext = correctiveToolOutputs.length > 0
+            const correctiveVerificationContext = systemMeta + (correctiveToolOutputs.length > 0
               ? `${contextString}\n\nReal-time Tool Outputs:\n${correctiveToolOutputs.join("\n")}`
-              : contextString;
+              : contextString);
             const finalGrounding = await verifyGrounding(correctiveVerificationContext, agentResponse, selectedProvider);
             await vectorStore.logHallucination(lastUserMessage, agentResponse, finalGrounding.safe, finalGrounding.feedback);
           }
@@ -256,9 +262,9 @@ export async function POST(req: NextRequest) {
 
           // Grounding guardrail check for JSON agent
           if (contextString.trim().length > 0) {
-            const verificationContext = toolOutputs.length > 0
+            const verificationContext = systemMeta + (toolOutputs.length > 0
               ? `${contextString}\n\nReal-time Tool Outputs:\n${toolOutputs.join("\n")}`
-              : contextString;
+              : contextString);
             const grounding = await verifyGrounding(verificationContext, agentResponse, selectedProvider);
             await vectorStore.logHallucination(lastUserMessage, agentResponse, grounding.safe, grounding.feedback);
             if (!grounding.safe) {
@@ -266,9 +272,9 @@ export async function POST(req: NextRequest) {
               const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
               const correctiveToolOutputs: string[] = [];
               agentResponse = await runJsonAgentLoop(llmProvider, correctivePrompt, conversationMessages, undefined, correctiveToolOutputs);
-              const correctiveVerificationContext = correctiveToolOutputs.length > 0
+              const correctiveVerificationContext = systemMeta + (correctiveToolOutputs.length > 0
                 ? `${contextString}\n\nReal-time Tool Outputs:\n${correctiveToolOutputs.join("\n")}`
-                : contextString;
+                : contextString);
               const finalGrounding = await verifyGrounding(correctiveVerificationContext, agentResponse, selectedProvider);
               await vectorStore.logHallucination(lastUserMessage, agentResponse, finalGrounding.safe, finalGrounding.feedback);
             }

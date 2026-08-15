@@ -1,4 +1,8 @@
 {
+  "system": {
+    "device": "Mac",
+    "os": "macOS"
+  },
   "profile": {
     "name": "Rohit Prasad",
     "role": "Product Developer",
