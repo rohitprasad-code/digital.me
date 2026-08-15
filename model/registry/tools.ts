@@ -54,7 +54,22 @@ export async function initializeMcpTools() {
             description: tool.description || "",
             parameters: (tool.inputSchema || { type: "object", properties: {} }) as ToolParameters,
             execute: async (args) => {
-              const sanitizedArgs = (args && typeof args === "object") ? args : {};
+              const sanitizedArgs = (args && typeof args === "object") ? { ...args } : {};
+              
+              // Schema-aware safe defaults backfill
+              const schemaProps = (tool.inputSchema?.properties || {}) as Record<string, Record<string, unknown>>;
+              for (const [key, propSchema] of Object.entries(schemaProps)) {
+                if (sanitizedArgs[key] === undefined || sanitizedArgs[key] === null) {
+                  if (propSchema.default !== undefined) {
+                    sanitizedArgs[key] = propSchema.default;
+                  } else if (tool.inputSchema?.required?.includes(key)) {
+                    if (propSchema.type === "string") sanitizedArgs[key] = "";
+                    else if (propSchema.type === "number" || propSchema.type === "integer") sanitizedArgs[key] = 0;
+                    else if (propSchema.type === "boolean") sanitizedArgs[key] = false;
+                  }
+                }
+              }
+
               const res = await client.callTool({
                 name: tool.name,
                 arguments: sanitizedArgs,

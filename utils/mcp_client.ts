@@ -72,6 +72,17 @@ export class McpClientManager {
         );
 
         await client.connect(transport);
+
+        // Security Guardrail: Wrap callTool to enforce allowedTools constraint at the client layer
+        const originalCallTool = client.callTool.bind(client);
+        client.callTool = async (params, options) => {
+          const allowed = serverConfig.allowedTools;
+          if (allowed && !allowed.includes(params.name)) {
+            throw new Error(`Security Guardrail: Tool "${params.name}" is not in the allowedTools list for server "${serverName}".`);
+          }
+          return originalCallTool(params, options);
+        };
+
         this.clients.set(serverName, client);
         log.success(`✓ Connected to MCP Server: ${serverName}`);
       } catch (err) {
