@@ -4,15 +4,29 @@ import fs from "fs";
 import path from "path";
 import { log } from "./logger";
 
+export interface IngestTask {
+  tool: string;
+  args?: Record<string, unknown>;
+  source: string;
+  title?: string;
+  itemTemplate?: string;
+}
+
 export interface ServerConfig {
   command: string;
   args: string[];
   env?: Record<string, string>;
+  allowedTools?: string[];
+  ingest?: IngestTask[];
+}
+
+export interface McpConfig {
+  mcpServers?: Record<string, ServerConfig>;
 }
 
 export class McpClientManager {
   private clients: Map<string, Client> = new Map();
-  public config: any = null;
+  public config: McpConfig | null = null;
 
   async init() {
     const configPath = path.resolve(process.cwd(), "mcp_config.json");
