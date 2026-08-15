@@ -28,13 +28,24 @@ export async function initializeMcpTools() {
     }
 
     const clients = mcpManager.getClients();
+    const config = mcpManager.config || {};
+    const mcpServers = config.mcpServers || {};
+
     for (const [serverName, client] of clients.entries()) {
       try {
+        const serverConfig = mcpServers[serverName] || {};
+        const allowedTools = Array.isArray(serverConfig.allowedTools) ? serverConfig.allowedTools : null;
+
         // Register the MCP Client in the Unified Registry
         registry.registerMcpClient(serverName, client);
 
         const response = await client.listTools();
         for (const tool of response.tools) {
+          // Filter tools if allowedTools list is configured
+          if (allowedTools && !allowedTools.includes(tool.name)) {
+            continue;
+          }
+
           // Namespace tools to prevent name collisions
           const namespacedName = `${serverName}_${tool.name}`;
           

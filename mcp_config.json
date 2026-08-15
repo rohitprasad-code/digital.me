@@ -72,6 +72,28 @@
           "title": "Presence Status"
         }
       ]
+    },
+    "smart-home": {
+      "command": "uv",
+      "args": [
+        "--directory",
+        "/Users/rohitprasad/Backup/mcp-s/smart-home-mcp-server",
+        "run",
+        "smart-home-mcp"
+      ],
+      "env": {},
+      "allowedTools": [
+        "list_devices",
+        "get_device_status"
+      ],
+      "ingest": [
+        {
+          "tool": "list_devices",
+          "args": {},
+          "source": "devices",
+          "title": "Smart Home Devices"
+        }
+      ]
     }
   }
 }

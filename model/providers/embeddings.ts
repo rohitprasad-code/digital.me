@@ -107,7 +107,11 @@ let _cachedEmbeddingProvider: EmbeddingProvider | null = null;
 export function getEmbeddingProvider(): EmbeddingProvider {
   if (_cachedEmbeddingProvider) return _cachedEmbeddingProvider;
 
-  const provider = (process.env.LLM_PROVIDER || "groq").toLowerCase();
+  const provider = (
+    process.env.EMBEDDING_PROVIDER ||
+    process.env.LLM_PROVIDER ||
+    "groq"
+  ).toLowerCase();
   _cachedEmbeddingProvider = new FallbackEmbeddingProvider(provider);
   return _cachedEmbeddingProvider;
 }

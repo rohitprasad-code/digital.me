@@ -12,6 +12,7 @@ export interface ServerConfig {
 
 export class McpClientManager {
   private clients: Map<string, Client> = new Map();
+  public config: any = null;
 
   async init() {
     const configPath = path.resolve(process.cwd(), "mcp_config.json");
@@ -23,6 +24,7 @@ export class McpClientManager {
     let config;
     try {
       config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+      this.config = config;
     } catch (error) {
       log.error("Failed to parse mcp_config.json", error instanceof Error ? error.message : String(error));
       return;
