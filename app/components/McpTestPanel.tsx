@@ -114,6 +114,11 @@ export function McpTestPanel() {
 
   const activeTool = tools.find((t) => t.name === selectedToolName);
 
+  const filteredTools = tools.filter((t) =>
+    t.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (t.description || "").toLowerCase().includes(searchQuery.toLowerCase())
+  );
+
   if (loadingTools) {
     return (
       <Flex align="center" justify="center" style={{ height: "100%", width: "100%" }}>
@@ -154,9 +159,30 @@ export function McpTestPanel() {
           <Text size="1" weight="bold" color="gray" style={{ letterSpacing: "0.05em", textTransform: "uppercase" }}>
             Registered Tools ({tools.length})
           </Text>
+
+          <input
+            type="text"
+            placeholder="Search tools..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            style={{
+              width: "100%",
+              padding: "8px 12px",
+              fontSize: "13px",
+              borderRadius: "8px",
+              border: "1px solid var(--gray-6)",
+              backgroundColor: "var(--color-surface)",
+              color: "var(--color-text)",
+              outline: "none",
+              fontFamily: "var(--font-outfit), sans-serif",
+              transition: "border-color 0.15s ease",
+            }}
+            onFocus={(e) => (e.target.style.borderColor = "var(--accent-8)")}
+            onBlur={(e) => (e.target.style.borderColor = "var(--gray-6)")}
+          />
           
           <Flex direction="column" gap="1">
-            {tools.map((t) => {
+            {filteredTools.map((t) => {
               const isActive = t.name === selectedToolName;
               return (
                 <Box
@@ -187,6 +213,11 @@ export function McpTestPanel() {
                 </Box>
               );
             })}
+            {filteredTools.length === 0 && (
+              <Text size="2" color="gray" style={{ fontStyle: "italic", textAlign: "center", marginTop: "12px" }}>
+                No matching tools.
+              </Text>
+            )}
           </Flex>
         </Box>
 
