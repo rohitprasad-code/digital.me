@@ -15,7 +15,7 @@ export const toolSchemas: Record<string, unknown>[] = [];
 export let isInitialized = false;
 
 export async function initializeMcpTools() {
-  if (isInitialized) return;
+  if (isInitialized && mcpManager.getClients().size > 0) return;
   try {
     await mcpManager.init();
     isInitialized = true;

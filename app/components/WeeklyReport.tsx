@@ -43,6 +43,23 @@ export function WeeklyReport() {
     }
   };
 
+  const handleForceSync = async () => {
+    setLoading(true);
+    setOpen(true);
+    try {
+      const res = await fetch("/api/report", { method: "POST" });
+      if (!res.ok) throw new Error("Failed to sync");
+      const data = await res.json();
+      setReportData(data.content);
+    } catch (err) {
+      setReportData(
+        `Failed to force sync/regenerate report: ${err instanceof Error ? err.message : String(err)}`
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Card size="2" variant="surface">
       <Flex direction="column" gap="3">
@@ -304,8 +321,8 @@ export function WeeklyReport() {
         </Dialog.Root>
 
         <Tooltip content="Forces an immediate regeneration of the report.">
-          <Button variant="outline" color="gray">
-            <UpdateIcon /> Force Sync Now
+          <Button variant="outline" color="gray" onClick={handleForceSync} disabled={loading}>
+            <UpdateIcon className={loading ? "spin" : ""} /> Force Sync Now
           </Button>
         </Tooltip>
           </Flex>

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "fs";
 import path from "path";
 import { generateWeeklyReport } from "../../../jobs/weekly_report";
+import { ingest } from "../../../memory/ingest";
 
 export async function GET(req: NextRequest) {
   const searchParams = req.nextUrl.searchParams;
@@ -45,6 +46,9 @@ export async function GET(req: NextRequest) {
 
 export async function POST() {
   try {
+    // 1. Force sync latest MCP data into Vector Database
+    await ingest();
+    // 2. Generate the report based on fresh data
     const reportMarkdown = await generateWeeklyReport();
     return NextResponse.json({ content: reportMarkdown });
   } catch (error) {

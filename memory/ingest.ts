@@ -15,7 +15,7 @@ import { TextParser } from "./data_processing/parsers/text_parser";
 import { HtmlParser } from "./data_processing/parsers/html_parser";
 import { transformMcpDataToNarrative } from "./data_processing/mcp_transformer";
 
-async function ingest() {
+async function ingest(options?: { closeMcp?: boolean }) {
   log.info("Ingestion started");
   const vectorStore = new VectorStore();
 
@@ -121,7 +121,24 @@ async function ingest() {
                 }).catch(() => null);
 
                 if (result && typeof result === "object" && "content" in result) {
-                  let content = (result as Record<string, unknown>).content;
+                  const contentBlocks = (result as Record<string, unknown>).content;
+                  let rawText = "";
+                  if (Array.isArray(contentBlocks)) {
+                    rawText = contentBlocks
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      .filter((block: any) => block && block.type === "text" && typeof block.text === "string")
+                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                      .map((block: any) => block.text)
+                      .join("\n");
+                  }
+
+                  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+                  let content: any = rawText;
+                  try {
+                    content = JSON.parse(rawText);
+                  } catch {
+                    // Fallback to raw text string if not valid JSON
+                  }
 
                   // Differential filtering for GitHub repositories
                   if (serverName === "github" && (task.tool === "list_repositories" || task.tool === "search_repositories")) {
@@ -168,7 +185,7 @@ async function ingest() {
 
                   let occurredAt = new Date();
                   try {
-                    const parsedContent = typeof content === "string" ? JSON.parse(content) : content;
+                    const parsedContent = content;
                     if (parsedContent) {
                       let items: Record<string, unknown>[] = [];
                       if (Array.isArray(parsedContent)) {
@@ -255,7 +272,9 @@ async function ingest() {
   }
 
   try {
-    await mcpManager.close();
+    if (options?.closeMcp) {
+      await mcpManager.close();
+    }
   } catch (err) {
     log.error("Failed to close MCP manager gracefully", err instanceof Error ? err.message : String(err));
   }
@@ -266,7 +285,7 @@ async function ingest() {
 export { ingest };
 
 if (require.main === module) {
-  ingest().catch(async (err) => {
+  ingest({ closeMcp: true }).catch(async (err) => {
     log.error(
       "Ingestion failed",
       err instanceof Error ? err.message : "Unknown error",

@@ -30,7 +30,7 @@ export class PostgresVectorStore {
         id: row.id,
         filePath: row.file_path,
         content: row.content,
-        metadata: row.metadata,
+        metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
         lastUpdatedAt: row.last_updated_at,
         occurredAt: row.occurred_at,
       }));
@@ -313,7 +313,7 @@ export class PostgresVectorStore {
           id: row.id,
           filePath: row.file_path,
           content: row.content,
-          metadata: row.metadata,
+          metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
           lastUpdatedAt: row.last_updated_at,
           occurredAt: row.occurred_at,
         },
@@ -452,7 +452,7 @@ export class PostgresVectorStore {
         id: row.id,
         filePath: row.file_path,
         content: row.content,
-        metadata: row.metadata,
+        metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
         lastUpdatedAt: row.last_updated_at,
         occurredAt: row.occurred_at,
       }));
