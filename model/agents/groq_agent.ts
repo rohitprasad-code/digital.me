@@ -37,6 +37,7 @@ function getGroqClient(): Groq {
 export async function runAgentLoop(
   systemPrompt: string,
   userMessages: { role: "user" | "assistant"; content: string }[],
+  toolOutputs?: string[],
 ): Promise<string> {
   if (!isInitialized) {
     await initializeMcpTools();
@@ -95,6 +96,10 @@ export async function runAgentLoop(
       console.log(
         `✅ Tool result: ${JSON.stringify(result).substring(0, 200)}...`,
       );
+
+      if (toolOutputs) {
+        toolOutputs.push(`Tool "${fnName}" called with arguments ${JSON.stringify(fnArgs)} returned: ${JSON.stringify(result)}`);
+      }
 
       messages.push({
         role: "tool",

@@ -46,17 +46,18 @@ export async function initializeMcpTools() {
             continue;
           }
 
-          // Namespace tools to prevent name collisions
-          const namespacedName = `${serverName}_${tool.name}`;
+          // Namespace tools to prevent name collisions and replace dashes with underscores for compatibility (e.g. with Groq tool calling)
+          const namespacedName = `${serverName}_${tool.name}`.replace(/-/g, "_");
           
           const definition: ToolDefinition = {
             name: namespacedName,
             description: tool.description || "",
             parameters: (tool.inputSchema || { type: "object", properties: {} }) as ToolParameters,
             execute: async (args) => {
+              const sanitizedArgs = (args && typeof args === "object") ? args : {};
               const res = await client.callTool({
                 name: tool.name,
-                arguments: args,
+                arguments: sanitizedArgs,
               });
               return res.content;
             },

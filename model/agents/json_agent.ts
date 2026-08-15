@@ -7,7 +7,8 @@ export async function runAgentLoop(
   provider: LLMProvider,
   systemPrompt: string,
   userMessages: ChatMessage[],
-  maxRounds = MAX_ROUNDS
+  maxRounds = MAX_ROUNDS,
+  toolOutputs?: string[]
 ): Promise<string> {
   const toolsList = registry.listTools().map((t) => ({
     name: t.name,
@@ -70,14 +71,21 @@ When you have the final answer, output it directly without using the JSON block.
 
     try {
       const result = await tool.execute(toolCall.arguments);
+      if (toolOutputs) {
+        toolOutputs.push(`Tool "${toolCall.tool}" called with arguments ${JSON.stringify(toolCall.arguments)} returned: ${JSON.stringify(result)}`);
+      }
       messages.push({
         role: "user",
         content: `Tool "${toolCall.tool}" returned result:\n${JSON.stringify(result, null, 2)}`,
       });
     } catch (err) {
+      const errStr = err instanceof Error ? err.message : String(err);
+      if (toolOutputs) {
+        toolOutputs.push(`Tool "${toolCall.tool}" called with arguments ${JSON.stringify(toolCall.arguments)} failed: ${errStr}`);
+      }
       messages.push({
         role: "user",
-        content: `Error: Tool execution failed: ${err instanceof Error ? err.message : String(err)}`,
+        content: `Error: Tool execution failed: ${errStr}`,
       });
     }
   }
