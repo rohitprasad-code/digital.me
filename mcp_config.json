@@ -2,22 +2,24 @@
   "mcpServers": {
     "strava": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@r-huijts/strava-mcp-server"
-      ],
+      "args": ["-y", "@r-huijts/strava-mcp-server"],
       "env": {
         "STRAVA_CLIENT_ID": "199188"
       },
+      "allowedTools": [
+        "get-athlete-profile",
+        "get-recent-activities",
+        "get-athlete-stats"
+      ],
       "ingest": [
         {
-          "tool": "get_athlete",
+          "tool": "get-athlete-profile",
           "args": {},
           "source": "profile",
           "title": "Strava Athlete Profile"
         },
         {
-          "tool": "get_activities",
+          "tool": "get-recent-activities",
           "args": { "limit": 10 },
           "source": "activities",
           "title": "Recent Activities",
@@ -27,15 +29,19 @@
     },
     "github": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@modelcontextprotocol/server-github"
-      ],
+      "args": ["-y", "@modelcontextprotocol/server-github"],
       "env": {},
+      "allowedTools": [
+        "search_repositories",
+        "get_file_contents",
+        "list_commits"
+      ],
       "ingest": [
         {
-          "tool": "list_repositories",
-          "args": {},
+          "tool": "search_repositories",
+          "args": {
+            "query": "user:rohitprasad-code"
+          },
           "source": "repos",
           "title": "GitHub Repositories",
           "itemTemplate": "I have a GitHub repository named \"{name}\" described as \"{description}\", primarily written in {language}. It has {stargazers_count} stars (last updated on {updated_at:date}). URL: {html_url}"
@@ -44,15 +50,15 @@
     },
     "web-search": {
       "command": "npx",
-      "args": [
-        "-y",
-        "@rp-x/web-mcp-server"
-      ],
+      "args": ["-y", "@rp-x/web-mcp-server"],
       "env": {},
+      "allowedTools": ["search_web", "fetch_page_markdown"],
       "ingest": [
         {
-          "tool": "search",
-          "args": {},
+          "tool": "search_web",
+          "args": {
+            "query": "technology"
+          },
           "source": "search",
           "title": "Web Search"
         }
@@ -64,6 +70,11 @@
         "/Users/rohitprasad/Backup/mcp-s/presence-mcp-server/dist/server.js"
       ],
       "env": {},
+      "allowedTools": [
+        "get_presence_status",
+        "get_system_idle_time",
+        "get_active_call_status"
+      ],
       "ingest": [
         {
           "tool": "get_presence_status",
@@ -84,7 +95,8 @@
       "env": {},
       "allowedTools": [
         "list_devices",
-        "get_device_status"
+        "get_device_status",
+        "scan_local_network"
       ],
       "ingest": [
         {

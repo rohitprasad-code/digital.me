@@ -11,6 +11,7 @@ import { MemoryExplorer } from "./components/MemoryExplorer";
 import { HallucinationLogs } from "./components/HallucinationLogs";
 
 import { GearIcon, BellIcon } from "@radix-ui/react-icons";
+import Image from "next/image";
 
 export default function Dashboard() {
   const [mode, setMode] = useState<Mode>("default");
@@ -91,9 +92,12 @@ export default function Dashboard() {
                 border: "1px solid var(--gray-6)",
               }}
             >
-              <img
+              <Image
                 src="https://lh3.googleusercontent.com/aida-public/AB6AXuBrmtHRFYflVXYRJyolNU7eEZ15Wf_i89PmDyrStHu6Gb1q9qOOp4j8wwhc-y4svBd7Tkca6nEiuh3PuY4vAkCgQOO5cbUp_bmAgqGr2bL3wUehOKNrrcLXy5_LijwEHc5KzxHQxUdoQw9jl29VhXuJ35FV-2EKeQd_gpdy1LHZ5YjhKkYSLfFnRbkl3b6l38mPYW999bYb4l7fYx7Avx2gzOlhFCAc8CE_IA1IV75DcBJeGDvsM54T"
                 alt="User avatar"
+                width={36}
+                height={36}
+                unoptimized
                 style={{ width: "100%", height: "100%", objectFit: "cover" }}
               />
             </Box>

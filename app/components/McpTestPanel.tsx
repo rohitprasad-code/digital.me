@@ -26,6 +26,7 @@ export function McpTestPanel() {
   const [output, setOutput] = useState<unknown>(null);
   const [running, setRunning] = useState(false);
   const [loadingTools, setLoadingTools] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
 
   useEffect(() => {
     const fetchTools = async () => {

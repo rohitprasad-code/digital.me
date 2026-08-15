@@ -109,7 +109,7 @@ async function ingest() {
               try {
                 log.info(`Running ingest tool: ${task.tool} for ${serverName}...`);
                 const taskArgs = { ...task.args };
-                if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities")) {
+                if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities" || task.tool === "get-recent-activities")) {
                   const epochSecs = Math.floor(lastSyncTime.getTime() / 1000);
                   taskArgs.after = epochSecs;
                   log.info(`Injecting after=${epochSecs} epoch seconds for Strava differential sync.`);
@@ -124,7 +124,7 @@ async function ingest() {
                   let content = (result as Record<string, unknown>).content;
 
                   // Differential filtering for GitHub repositories
-                  if (serverName === "github" && task.tool === "list_repositories") {
+                  if (serverName === "github" && (task.tool === "list_repositories" || task.tool === "search_repositories")) {
                     const contentRecord = content as Record<string, unknown>;
                     let repos = Array.isArray(content)
                       ? content
@@ -152,7 +152,7 @@ async function ingest() {
                   }
 
                   // Differential check for Strava activities returned (if any)
-                  if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities")) {
+                  if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities" || task.tool === "get-recent-activities")) {
                     const contentRecord = content as Record<string, unknown>;
                     const activities = Array.isArray(content)
                       ? content

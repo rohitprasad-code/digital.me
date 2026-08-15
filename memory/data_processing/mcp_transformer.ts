@@ -120,7 +120,7 @@ export function transformMcpDataToNarrative(
   }
 
   // Fallback: Hardcoded mappings for GitHub Repositories
-  if (serverName === "github" && (toolName === "list_repositories" || toolName === "get_repositories")) {
+  if (serverName === "github" && (toolName === "list_repositories" || toolName === "get_repositories" || toolName === "search_repositories")) {
     const repos: GitHubRepo[] = Array.isArray(parsed)
       ? parsed
       : Array.isArray(parsed.repositories)
@@ -143,7 +143,7 @@ export function transformMcpDataToNarrative(
   }
 
   // Fallback: Hardcoded mappings for Strava Activities
-  if (serverName === "strava" && (toolName === "get_activities" || toolName === "get_recent_activities" || toolName === "get_recent_activities_all")) {
+  if (serverName === "strava" && (toolName === "get_activities" || toolName === "get_recent_activities" || toolName === "get-recent-activities" || toolName === "get_recent_activities_all")) {
     const activities: StravaActivity[] = Array.isArray(parsed)
       ? parsed
       : Array.isArray(parsed.activities)
