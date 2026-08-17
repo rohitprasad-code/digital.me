@@ -14,6 +14,7 @@ import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
 } from "groq-sdk/resources/chat/completions";
+import { getBestGroqModel } from "../providers/groq/model_selector";
 
 const MAX_TOOL_ROUNDS = 5; // safety limit to prevent infinite loops
 
@@ -43,7 +44,7 @@ export async function runAgentLoop(
     await initializeMcpTools();
   }
   const groq = getGroqClient();
-  const model = process.env.GROQ_CHAT_MODEL || "llama-3.1-8b-instant";
+  const model = await getBestGroqModel(groq);
 
   const messages: ChatCompletionMessageParam[] = [
     { role: "system", content: systemPrompt },
@@ -56,6 +57,7 @@ export async function runAgentLoop(
       messages,
       tools: toolSchemas as unknown as ChatCompletionTool[],
       tool_choice: "auto",
+      ...({ reasoning_effort: "none" } as Record<string, unknown>),
     });
 
     const choice = response.choices[0];
@@ -66,7 +68,9 @@ export async function runAgentLoop(
       !assistantMessage.tool_calls ||
       assistantMessage.tool_calls.length === 0
     ) {
-      return assistantMessage.content || "";
+      let content = assistantMessage.content || "";
+      content = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+      return content;
     }
 
     // Append the assistant's message (with tool calls) to the conversation
@@ -120,7 +124,10 @@ export async function runAgentLoop(
           "Please summarize the tool results and give me the final answer.",
       },
     ],
+    ...({ reasoning_effort: "none" } as Record<string, unknown>),
   });
 
-  return fallback.choices[0]?.message?.content || "I could not complete the request.";
+  let fallbackContent = fallback.choices[0]?.message?.content || "I could not complete the request.";
+  fallbackContent = fallbackContent.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  return fallbackContent;
 }

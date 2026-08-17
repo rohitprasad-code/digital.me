@@ -6,6 +6,7 @@ import type {
   ChatResponse,
 } from "../provider";
 import type { EmbeddingProvider } from "../embeddings";
+import { getBestGroqModel } from "./model_selector";
 
 function getGroqClient(): Groq {
   const apiKey = process.env.GROQ_API_KEY;
@@ -17,8 +18,6 @@ function getGroqClient(): Groq {
   return new Groq({ apiKey });
 }
 
-const DEFAULT_MODEL = "llama-3.1-8b-instant";
-
 export class GroqProvider implements LLMProvider {
   async chat(
     messages: ChatMessage[],
@@ -26,15 +25,18 @@ export class GroqProvider implements LLMProvider {
   ): Promise<ChatResponse> {
     const groq = getGroqClient();
     const modelName =
-      options?.model || process.env.GROQ_CHAT_MODEL || DEFAULT_MODEL;
+      options?.model || (await getBestGroqModel(groq));
 
     const response = await groq.chat.completions.create({
       messages: messages as { role: "system" | "user" | "assistant"; content: string }[],
       model: modelName,
       stream: false,
+      ...({ reasoning_effort: "none" } as Record<string, unknown>),
     });
 
-    return { content: response.choices[0]?.message?.content || "" };
+    let content = response.choices[0]?.message?.content || "";
+    content = content.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+    return { content };
   }
 
   async *chatStream(
@@ -43,12 +45,13 @@ export class GroqProvider implements LLMProvider {
   ): AsyncIterable<string> {
     const groq = getGroqClient();
     const modelName =
-      options?.model || process.env.GROQ_CHAT_MODEL || DEFAULT_MODEL;
+      options?.model || (await getBestGroqModel(groq));
 
     const stream = await groq.chat.completions.create({
       messages: messages as { role: "system" | "user" | "assistant"; content: string }[],
       model: modelName,
       stream: true,
+      ...({ reasoning_effort: "none" } as Record<string, unknown>),
     });
 
     for await (const chunk of stream) {
@@ -61,7 +64,7 @@ export class GroqProvider implements LLMProvider {
 
   async healthCheck(): Promise<void> {
     const groq = getGroqClient();
-    const modelName = process.env.GROQ_CHAT_MODEL || DEFAULT_MODEL;
+    const modelName = await getBestGroqModel(groq);
 
     // Lightweight call to verify connectivity
     await groq.chat.completions.create({
