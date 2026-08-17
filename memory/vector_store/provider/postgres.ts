@@ -440,13 +440,17 @@ export class PostgresVectorStore {
   async getDocumentsByTimeRange(
     startDate: Date,
     endDate: Date,
+    sourcePrefix?: string,
   ): Promise<Document[]> {
     const db = getDb();
     try {
+      const hasPrefix = !!sourcePrefix;
+      const prefixLike = sourcePrefix ? `${sourcePrefix}%` : "";
       const rows = await db`
         SELECT id, file_path, content, metadata, last_updated_at, occurred_at 
         FROM document_chunks 
         WHERE occurred_at >= ${startDate} AND occurred_at <= ${endDate}
+          AND (${hasPrefix} = FALSE OR metadata->>'source' LIKE ${prefixLike})
       `;
       return rows.map((row) => ({
         id: row.id,

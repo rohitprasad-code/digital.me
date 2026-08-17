@@ -65,6 +65,7 @@ export interface IVectorStore {
   getDocumentsByTimeRange(
     startDate: Date,
     endDate: Date,
+    sourcePrefix?: string,
   ): Promise<Document[]>;
   close?(): Promise<void>;
 }

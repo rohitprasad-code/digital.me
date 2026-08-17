@@ -352,12 +352,18 @@ export class JsonVectorStore {
   async getDocumentsByTimeRange(
     startDate: Date,
     endDate: Date,
+    sourcePrefix?: string,
   ): Promise<Document[]> {
     const startMs = startDate.getTime();
     const endMs = endDate.getTime();
     return this.documents.filter((doc) => {
       const occurredMs = doc.occurredAt ? new Date(doc.occurredAt).getTime() : 0;
-      return occurredMs >= startMs && occurredMs <= endMs;
+      const inTimeRange = occurredMs >= startMs && occurredMs <= endMs;
+      if (!inTimeRange) return false;
+      if (sourcePrefix) {
+        return typeof doc.metadata?.source === "string" && doc.metadata.source.startsWith(sourcePrefix);
+      }
+      return true;
     });
   }
 

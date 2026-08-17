@@ -49,6 +49,11 @@ export async function initializeMcpTools() {
           // Namespace tools to prevent name collisions and replace dashes with underscores for compatibility (e.g. with Groq tool calling)
           const namespacedName = `${serverName}_${tool.name}`.replace(/-/g, "_");
           
+          if (TOOL_MAP[namespacedName]) {
+            log.warn(`Skipping duplicate namespaced tool: ${namespacedName} (from tool: ${tool.name})`);
+            continue;
+          }
+          
           const definition: ToolDefinition = {
             name: namespacedName,
             description: tool.description || "",
