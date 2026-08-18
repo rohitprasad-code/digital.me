@@ -47,7 +47,7 @@ export class McpClientManager {
     const mcpServers = config.mcpServers || {};
     for (const [serverName, serverConfig] of Object.entries(mcpServers as Record<string, ServerConfig>)) {
       try {
-        log.info(`Connecting to MCP Server: ${serverName}...`);
+        log.info(`MCP /connecting: ${serverName}`);
         
         // Merge process.env with specific server environment variables
         const env: Record<string, string> = {};
@@ -64,6 +64,7 @@ export class McpClientManager {
           command: serverConfig.command,
           args: serverConfig.args,
           env,
+          stderr: "ignore",
         });
 
         const client = new Client(
@@ -84,15 +85,15 @@ export class McpClientManager {
         };
 
         this.clients.set(serverName, client);
-        log.success(`✓ Connected to MCP Server: ${serverName}`);
+        log.success(`MCP /connected: ${serverName}`);
       } catch (err) {
-        log.error(`Failed to connect to MCP Server ${serverName}`, err instanceof Error ? err.message : String(err));
+        log.error(`MCP /connection_failed: ${serverName}`, err instanceof Error ? err.message : String(err));
       }
     }
 
     if (this.clients.size > 0) {
       const cleanup = async () => {
-        log.info("Cleaning up MCP connections...");
+        log.info("MCP /cleanup: Cleaning up MCP connections...");
         await this.close();
       };
       process.once("SIGINT", async () => {
@@ -114,9 +115,9 @@ export class McpClientManager {
     for (const [name, client] of this.clients.entries()) {
       try {
         await client.close();
-        log.info(`Closed connection to MCP Server: ${name}`);
+        log.info(`MCP /closed: ${name}`);
       } catch (err) {
-        log.error(`Error closing connection to MCP Server ${name}`, err instanceof Error ? err.message : String(err));
+        log.error(`MCP /close_failed: ${name}`, err instanceof Error ? err.message : String(err));
       }
     }
     this.clients.clear();

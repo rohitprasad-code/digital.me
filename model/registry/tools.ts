@@ -103,8 +103,8 @@ export async function initializeMcpTools() {
       }
     }
     
-    log.info(`Initialized dynamic MCP tools. Total tools registered: ${allToolDefinitions.length}`);
+    log.info(`MCP /registry_init: Initialized dynamic MCP tools. Total registered: ${allToolDefinitions.length}`);
   } catch (error) {
-    log.error("Failed to initialize MCP tools", error instanceof Error ? error.message : String(error));
+    log.error("MCP /registry_error: Failed to initialize MCP tools", error instanceof Error ? error.message : String(error));
   }
 }

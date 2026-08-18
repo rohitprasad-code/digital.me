@@ -3,13 +3,30 @@ import path from "path";
 
 export type LogLevel = "ERROR" | "WARN" | "INFO" | "SUCCESS";
 
-export async function logEvent(
+// Intercept stdout to strip leading spaces from Next.js HTTP request logs (e.g. " GET /" -> "GET /")
+if (typeof process !== "undefined" && process.stdout) {
+  const originalStdoutWrite = process.stdout.write.bind(process.stdout);
+
+  process.stdout.write = (
+    chunk: string | Buffer,
+    encoding?: BufferEncoding | ((err?: Error | null) => void),
+    callback?: (err?: Error | null) => void
+  ): boolean => {
+    const str = typeof chunk === "string" ? chunk : chunk.toString("utf-8");
+    const cleaned = str.replace(/^\s+(GET|POST|PUT|DELETE|PATCH)\b/gm, "$1");
+    if (typeof encoding === "function") {
+      return originalStdoutWrite(cleaned, encoding);
+    }
+    return originalStdoutWrite(cleaned, encoding as BufferEncoding, callback);
+  };
+}
+
+async function logToFile(
   level: LogLevel = "INFO",
   message: string,
   metadata: unknown = {},
 ) {
   try {
-    console.log(message);
     const logsDir = path.resolve(process.cwd(), ".logs");
     await fs.mkdir(logsDir, { recursive: true });
 
@@ -41,13 +58,26 @@ export async function logEvent(
   }
 }
 
-export const log = {
-  info: (message: string, metadata: unknown = {}) =>
-    logEvent("INFO", message, metadata),
-  error: (message: string, metadata: unknown = {}) =>
-    logEvent("ERROR", message, metadata),
-  warn: (message: string, metadata: unknown = {}) =>
-    logEvent("WARN", message, metadata),
-  success: (message: string, metadata: unknown = {}) =>
-    logEvent("SUCCESS", message, metadata),
+export const logger = {
+  log: (message: string, ...args: unknown[]) => {
+    console.log(message, ...args);
+  },
+  info: (message: string, metadata: unknown = {}) => {
+    console.log(message);
+    logToFile("INFO", message, metadata).catch(() => {});
+  },
+  warn: (message: string, metadata: unknown = {}) => {
+    console.warn(message);
+    logToFile("WARN", message, metadata).catch(() => {});
+  },
+  error: (message: string, metadata: unknown = {}) => {
+    console.error(message);
+    logToFile("ERROR", message, metadata).catch(() => {});
+  },
+  success: (message: string, metadata: unknown = {}) => {
+    console.log(message);
+    logToFile("SUCCESS", message, metadata).catch(() => {});
+  }
 };
+
+export const log = logger;

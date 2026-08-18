@@ -15,6 +15,8 @@ import { registry } from "@/model/registry/unified";
 import { verifyGrounding } from "@/model/middleware/grounding";
 import { buildGroundingContext } from "@/model/middleware/grounding_context";
 
+import { logger } from "@/utils/logger";
+
 const vectorStore = new VectorStore();
 const router = new MemoryRouter();
 
@@ -22,7 +24,10 @@ export async function GET() {
   try {
     const provider = getLLMProvider();
     await provider.healthCheck();
-    return NextResponse.json({ status: "running", message: "Digital-Me (Chat) is running" });
+    return NextResponse.json({
+      status: "running",
+      message: "Digital-Me (Chat) is running",
+    });
   } catch (error) {
     console.error("Health check failed:", error);
     return NextResponse.json(
@@ -30,7 +35,7 @@ export async function GET() {
       {
         status: 503,
         statusText: "Service Unavailable",
-      }
+      },
     );
   }
 }
@@ -80,6 +85,7 @@ export async function POST(req: NextRequest) {
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1];
       if (lastMessage.role === "user") {
+        logger.log(`Chat /input: "${lastMessage.content}"`);
         // Auto-detect intent if no explicit mode was provided
         if (!mode) {
           detectedMode = await router.detectIntent(lastMessage.content);
@@ -90,7 +96,10 @@ export async function POST(req: NextRequest) {
           try {
             await initializeMcpTools();
           } catch (mcpErr) {
-            console.error("Failed to initialize MCP tools during chat:", mcpErr);
+            console.error(
+              "Failed to initialize MCP tools during chat:",
+              mcpErr,
+            );
           }
         }
 
@@ -108,43 +117,65 @@ export async function POST(req: NextRequest) {
           if (targetCategory === "dynamic") {
             const dynamicMcpTasks: Promise<string>[] = [];
             const registeredTools = registry.listTools();
-            
-            const stravaTool = registeredTools.find((t) => t.name === "strava_get_activities" || t.name === "strava_get_recent_activities");
-            const githubTool = registeredTools.find((t) => t.name === "github_list_repositories");
-            const presenceTool = registeredTools.find((t) => t.name === "presence-monitor_get_presence_status");
+
+            const stravaTool = registeredTools.find(
+              (t) =>
+                t.name === "strava_get_activities" ||
+                t.name === "strava_get_recent_activities",
+            );
+            const githubTool = registeredTools.find(
+              (t) => t.name === "github_list_repositories",
+            );
+            const presenceTool = registeredTools.find(
+              (t) => t.name === "presence-monitor_get_presence_status",
+            );
 
             if (stravaTool) {
               dynamicMcpTasks.push(
-                stravaTool.execute({ limit: 5 })
-                  .then((res) => `Strava Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`)
-                  .catch(() => "")
+                stravaTool
+                  .execute({ limit: 5 })
+                  .then(
+                    (res) =>
+                      `Strava Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`,
+                  )
+                  .catch(() => ""),
               );
             }
             if (githubTool) {
               dynamicMcpTasks.push(
-                githubTool.execute({})
-                  .then((res) => `GitHub Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`)
-                  .catch(() => "")
+                githubTool
+                  .execute({})
+                  .then(
+                    (res) =>
+                      `GitHub Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`,
+                  )
+                  .catch(() => ""),
               );
             }
             if (presenceTool) {
               dynamicMcpTasks.push(
-                presenceTool.execute({})
-                  .then((res) => `Presence Monitor Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`)
-                  .catch(() => "")
+                presenceTool
+                  .execute({})
+                  .then(
+                    (res) =>
+                      `Presence Monitor Realtime: ${typeof res === "string" ? res : JSON.stringify(res)}`,
+                  )
+                  .catch(() => ""),
               );
             }
 
             if (dynamicMcpTasks.length > 0) {
-              mcpSearchPromise = Promise.all(dynamicMcpTasks).then((resultsArray) => {
-                return resultsArray.filter(Boolean).join("\n---\n");
-              });
+              mcpSearchPromise = Promise.all(dynamicMcpTasks).then(
+                (resultsArray) => {
+                  return resultsArray.filter(Boolean).join("\n---\n");
+                },
+              );
             }
           }
 
           const [resultsVal, mcpContent] = await Promise.all([
             dbSearchPromise,
-            mcpSearchPromise
+            mcpSearchPromise,
           ]);
           let results = resultsVal;
 
@@ -159,26 +190,28 @@ export async function POST(req: NextRequest) {
             const retrievedContent = results
               .map((r) => r.doc.content)
               .join("\n---\n");
-            
-            const combinedContent = [
-              retrievedContent,
-              mcpContent
-            ].filter(Boolean).join("\n---\n");
+
+            const combinedContent = [retrievedContent, mcpContent]
+              .filter(Boolean)
+              .join("\n---\n");
 
             contextString = `\n\nRelevant Context:\n${combinedContent}`;
-            console.log(
-              `Retrieved ${results.length} DB records for category "${targetCategory}" (Real-time MCP: ${!!mcpContent}).`,
+            logger.log(
+              `Chat /retrieved_context: category="${targetCategory}" records=${results.length} mcp=${!!mcpContent}`
             );
           }
         } catch (err) {
-          console.error("Failed to retrieve context:", err);
+          logger.error("Chat /retrieval_error: Failed to retrieve context", err instanceof Error ? err.message : String(err));
         }
       }
     }
 
-    console.log(`Context mode: ${detectedMode}`);
+    logger.log(`Chat /context_mode: ${detectedMode}`);
 
-    const systemPrompt = getSystemPrompt(detectedMode) + contextString + "\n\nIMPORTANT: Keep your response short, direct, and on-point (maximum 1-2 sentences). Avoid writing long paragraphs.";
+    const systemPrompt =
+      getSystemPrompt(detectedMode) +
+      contextString +
+      "\n\nIMPORTANT: Keep your response short, direct, and on-point (maximum 1-2 sentences). Avoid writing long paragraphs.";
 
     // Extract user/assistant messages (exclude any prior system messages)
     const conversationMessages = messages.map(
@@ -204,7 +237,8 @@ export async function POST(req: NextRequest) {
     let finalResponseText = "";
     let ranAgent = false;
 
-    const lastUserMessage = messages.length > 0 ? messages[messages.length - 1].content : "";
+    const lastUserMessage =
+      messages.length > 0 ? messages[messages.length - 1].content : "";
 
     if (isGroqProvider) {
       try {
@@ -218,17 +252,47 @@ export async function POST(req: NextRequest) {
 
         // Grounding guardrail check for Groq
         if (contextString.trim().length > 0) {
-          const verificationContext = buildGroundingContext(contextString, toolOutputs);
-          const grounding = await verifyGrounding(verificationContext, agentResponse, selectedProvider);
-          await vectorStore.logHallucination(lastUserMessage, agentResponse, grounding.safe, grounding.feedback);
+          const verificationContext = buildGroundingContext(
+            contextString,
+            toolOutputs,
+          );
+          const grounding = await verifyGrounding(
+            verificationContext,
+            agentResponse,
+            selectedProvider,
+          );
+          await vectorStore.logHallucination(
+            lastUserMessage,
+            agentResponse,
+            grounding.safe,
+            grounding.feedback,
+          );
           if (!grounding.safe) {
-            console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
+            console.warn(
+              `⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`,
+            );
             const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
             const correctiveToolOutputs: string[] = [];
-            agentResponse = await runAgentLoop(correctivePrompt, conversationMessages, correctiveToolOutputs);
-            const correctiveVerificationContext = buildGroundingContext(contextString, correctiveToolOutputs);
-            const finalGrounding = await verifyGrounding(correctiveVerificationContext, agentResponse, selectedProvider);
-            await vectorStore.logHallucination(lastUserMessage, agentResponse, finalGrounding.safe, finalGrounding.feedback);
+            agentResponse = await runAgentLoop(
+              correctivePrompt,
+              conversationMessages,
+              correctiveToolOutputs,
+            );
+            const correctiveVerificationContext = buildGroundingContext(
+              contextString,
+              correctiveToolOutputs,
+            );
+            const finalGrounding = await verifyGrounding(
+              correctiveVerificationContext,
+              agentResponse,
+              selectedProvider,
+            );
+            await vectorStore.logHallucination(
+              lastUserMessage,
+              agentResponse,
+              finalGrounding.safe,
+              finalGrounding.feedback,
+            );
           }
         }
         finalResponseText = agentResponse;
@@ -253,17 +317,49 @@ export async function POST(req: NextRequest) {
 
           // Grounding guardrail check for JSON agent
           if (contextString.trim().length > 0) {
-            const verificationContext = buildGroundingContext(contextString, toolOutputs);
-            const grounding = await verifyGrounding(verificationContext, agentResponse, selectedProvider);
-            await vectorStore.logHallucination(lastUserMessage, agentResponse, grounding.safe, grounding.feedback);
+            const verificationContext = buildGroundingContext(
+              contextString,
+              toolOutputs,
+            );
+            const grounding = await verifyGrounding(
+              verificationContext,
+              agentResponse,
+              selectedProvider,
+            );
+            await vectorStore.logHallucination(
+              lastUserMessage,
+              agentResponse,
+              grounding.safe,
+              grounding.feedback,
+            );
             if (!grounding.safe) {
-              console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
+              console.warn(
+                `⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`,
+              );
               const correctivePrompt = `${systemPrompt}\n\n⚠️ GROUNDING WARNING: Your previous response contained claims not supported by the context: "${grounding.feedback}". Rewriting response to be 100% grounded in the Context.`;
               const correctiveToolOutputs: string[] = [];
-              agentResponse = await runJsonAgentLoop(llmProvider, correctivePrompt, conversationMessages, undefined, correctiveToolOutputs);
-              const correctiveVerificationContext = buildGroundingContext(contextString, correctiveToolOutputs);
-              const finalGrounding = await verifyGrounding(correctiveVerificationContext, agentResponse, selectedProvider);
-              await vectorStore.logHallucination(lastUserMessage, agentResponse, finalGrounding.safe, finalGrounding.feedback);
+              agentResponse = await runJsonAgentLoop(
+                llmProvider,
+                correctivePrompt,
+                conversationMessages,
+                undefined,
+                correctiveToolOutputs,
+              );
+              const correctiveVerificationContext = buildGroundingContext(
+                contextString,
+                correctiveToolOutputs,
+              );
+              const finalGrounding = await verifyGrounding(
+                correctiveVerificationContext,
+                agentResponse,
+                selectedProvider,
+              );
+              await vectorStore.logHallucination(
+                lastUserMessage,
+                agentResponse,
+                finalGrounding.safe,
+                finalGrounding.feedback,
+              );
             }
           }
           finalResponseText = agentResponse;
@@ -289,10 +385,21 @@ export async function POST(req: NextRequest) {
 
         // Grounding guardrail check for fallback
         if (contextString.trim().length > 0) {
-          const grounding = await verifyGrounding(contextString, fallbackResponse, selectedProvider);
-          await vectorStore.logHallucination(lastUserMessage, fallbackResponse, grounding.safe, grounding.feedback);
+          const grounding = await verifyGrounding(
+            contextString,
+            fallbackResponse,
+            selectedProvider,
+          );
+          await vectorStore.logHallucination(
+            lastUserMessage,
+            fallbackResponse,
+            grounding.safe,
+            grounding.feedback,
+          );
           if (!grounding.safe) {
-            console.warn(`⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`);
+            console.warn(
+              `⚠️ Factual grounding violation detected: ${grounding.feedback}. Initiating correction loop...`,
+            );
             const correctionMessages = [
               {
                 role: "system" as const,
@@ -302,16 +409,30 @@ export async function POST(req: NextRequest) {
             ];
             const correctedRes = await llmProvider.chat(correctionMessages);
             fallbackResponse = correctedRes.content;
-            const finalGrounding = await verifyGrounding(contextString, fallbackResponse, selectedProvider);
-            await vectorStore.logHallucination(lastUserMessage, fallbackResponse, finalGrounding.safe, finalGrounding.feedback);
+            const finalGrounding = await verifyGrounding(
+              contextString,
+              fallbackResponse,
+              selectedProvider,
+            );
+            await vectorStore.logHallucination(
+              lastUserMessage,
+              fallbackResponse,
+              finalGrounding.safe,
+              finalGrounding.feedback,
+            );
           }
         }
         finalResponseText = fallbackResponse;
       } catch (err) {
         console.error("Fallback chat flow failed:", err);
-        finalResponseText = "I'm sorry, I could not verify that information in my local memory.";
+        finalResponseText =
+          "I'm sorry, I could not verify that information in my local memory.";
       }
     }
+
+    logger.log(
+      `Chat /output: "${finalResponseText.substring(0, 100).replace(/\n/g, " ")}${finalResponseText.length > 100 ? "..." : ""}"`,
+    );
 
     const encoder = new TextEncoder();
     const stream = new ReadableStream({

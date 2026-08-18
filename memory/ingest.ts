@@ -1,8 +1,12 @@
 import path from "path";
 import fs from "fs";
-import { log } from "../utils/logger";
+import { log, logger } from "../utils/logger";
 import { VectorStore } from "./vector_store/index";
-import { initializeMcpTools, mcpManager, isInitialized } from "../model/registry/tools";
+import {
+  initializeMcpTools,
+  mcpManager,
+  isInitialized,
+} from "../model/registry/tools";
 import {
   crawlDirectory,
   determineFileRole,
@@ -16,7 +20,7 @@ import { HtmlParser } from "./data_processing/parsers/html_parser";
 import { transformMcpDataToNarrative } from "./data_processing/mcp_transformer";
 
 async function ingest(options?: { closeMcp?: boolean }) {
-  log.info("Ingestion started");
+  logger.log("Sync /start");
   const vectorStore = new VectorStore();
 
   // Load existing vectors (we DO NOT clear it anymore, so we can do incremental syncs)
@@ -25,7 +29,9 @@ async function ingest(options?: { closeMcp?: boolean }) {
   let lastSyncTime = new Date(0);
   try {
     const allDocs = await vectorStore.getAllDocuments();
-    const syncTimeDoc = allDocs.find((d) => d.metadata?.source === "system:last_sync_marker");
+    const syncTimeDoc = allDocs.find(
+      (d) => d.metadata?.source === "system:last_sync_marker",
+    );
     if (syncTimeDoc && syncTimeDoc.metadata?.timestamp) {
       lastSyncTime = new Date(syncTimeDoc.metadata.timestamp as string);
     }
@@ -74,10 +80,12 @@ async function ingest(options?: { closeMcp?: boolean }) {
   const clients = mcpManager.getClients();
   for (const [serverName, client] of clients.entries()) {
     try {
-      log.info(`Syncing data from MCP Server: ${serverName}...`);
-      
+      logger.log(`MCP /sync: ${serverName}`);
+
       // Sync through resources if available
-      const resourcesRes = await client.listResources().catch(() => ({ resources: [] }));
+      const resourcesRes = await client
+        .listResources()
+        .catch(() => ({ resources: [] }));
       if (resourcesRes.resources && resourcesRes.resources.length > 0) {
         for (const resource of resourcesRes.resources) {
           try {
@@ -93,7 +101,10 @@ async function ingest(options?: { closeMcp?: boolean }) {
               }
             }
           } catch (resErr) {
-            log.warn(`Failed to read MCP resource ${resource.uri}:`, resErr instanceof Error ? resErr.message : String(resErr));
+            log.warn(
+              `Failed to read MCP resource ${resource.uri}:`,
+              resErr instanceof Error ? resErr.message : String(resErr),
+            );
           }
         }
       }
@@ -107,28 +118,43 @@ async function ingest(options?: { closeMcp?: boolean }) {
           if (serverConfig && Array.isArray(serverConfig.ingest)) {
             for (const task of serverConfig.ingest) {
               try {
-                log.info(`Running ingest tool: ${task.tool} for ${serverName}...`);
+                logger.log(`MCP /input: ${task.tool}`);
                 const taskArgs = { ...task.args };
-                if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities" || task.tool === "get-recent-activities")) {
+                if (
+                  serverName === "strava" &&
+                  (task.tool === "get_activities" ||
+                    task.tool === "get_recent_activities" ||
+                    task.tool === "get-recent-activities")
+                ) {
                   const epochSecs = Math.floor(lastSyncTime.getTime() / 1000);
                   taskArgs.after = epochSecs;
-                  log.info(`Injecting after=${epochSecs} epoch seconds for Strava differential sync.`);
+                  logger.log(`MCP /inject: after=${epochSecs}`);
                 }
 
-                const result = await client.callTool({
-                  name: task.tool,
-                  arguments: taskArgs,
-                }).catch(() => null);
+                const result = await client
+                  .callTool({
+                    name: task.tool,
+                    arguments: taskArgs,
+                  })
+                  .catch(() => null);
 
-                if (result && typeof result === "object" && "content" in result) {
-                  const contentBlocks = (result as Record<string, unknown>).content;
+                if (
+                  result &&
+                  typeof result === "object" &&
+                  "content" in result
+                ) {
+                  const contentBlocks = (result as Record<string, unknown>)
+                    .content;
                   let rawText = "";
                   if (Array.isArray(contentBlocks)) {
-                    rawText = contentBlocks
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      .filter((block: any) => block && block.type === "text" && typeof block.text === "string")
-                      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-                      .map((block: any) => block.text)
+                    rawText = (contentBlocks as Record<string, unknown>[])
+                      .filter(
+                        (block) =>
+                          block &&
+                          block.type === "text" &&
+                          typeof block.text === "string",
+                      )
+                      .map((block) => block.text as string)
                       .join("\n");
                   }
 
@@ -141,23 +167,36 @@ async function ingest(options?: { closeMcp?: boolean }) {
                   }
 
                   // Differential filtering for GitHub repositories
-                  if (serverName === "github" && (task.tool === "list_repositories" || task.tool === "search_repositories")) {
+                  if (
+                    serverName === "github" &&
+                    (task.tool === "list_repositories" ||
+                      task.tool === "search_repositories")
+                  ) {
                     const contentRecord = content as Record<string, unknown>;
                     let repos = Array.isArray(content)
                       ? content
-                      : contentRecord && Array.isArray(contentRecord.repositories)
-                      ? contentRecord.repositories
-                      : null;
+                      : contentRecord &&
+                          Array.isArray(contentRecord.repositories)
+                        ? contentRecord.repositories
+                        : null;
 
                     if (Array.isArray(repos)) {
                       const initialCount = repos.length;
                       repos = repos.filter((repo) => {
                         const r = repo as Record<string, unknown>;
-                        return r && r.updated_at && new Date(String(r.updated_at)) > lastSyncTime;
+                        return (
+                          r &&
+                          r.updated_at &&
+                          new Date(String(r.updated_at)) > lastSyncTime
+                        );
                       });
-                      log.info(`Differential sync: Filtered GitHub repositories from ${initialCount} to ${repos.length} based on last sync.`);
+                      log.info(
+                        `Differential sync: Filtered GitHub repositories from ${initialCount} to ${repos.length} based on last sync.`,
+                      );
                       if (repos.length === 0) {
-                        log.info(`No updated repositories since last sync. Skipping indexing.`);
+                        log.info(
+                          `No updated repositories since last sync. Skipping indexing.`,
+                        );
                         continue;
                       }
                       if (Array.isArray(content)) {
@@ -169,16 +208,23 @@ async function ingest(options?: { closeMcp?: boolean }) {
                   }
 
                   // Differential check for Strava activities returned (if any)
-                  if (serverName === "strava" && (task.tool === "get_activities" || task.tool === "get_recent_activities" || task.tool === "get-recent-activities")) {
+                  if (
+                    serverName === "strava" &&
+                    (task.tool === "get_activities" ||
+                      task.tool === "get_recent_activities" ||
+                      task.tool === "get-recent-activities")
+                  ) {
                     const contentRecord = content as Record<string, unknown>;
                     const activities = Array.isArray(content)
                       ? content
                       : contentRecord && Array.isArray(contentRecord.activities)
-                      ? contentRecord.activities
-                      : null;
+                        ? contentRecord.activities
+                        : null;
 
                     if (Array.isArray(activities) && activities.length === 0) {
-                      log.info(`No new Strava activities since last sync. Skipping indexing.`);
+                      log.info(
+                        `No new Strava activities since last sync. Skipping indexing.`,
+                      );
                       continue;
                     }
                   }
@@ -190,19 +236,27 @@ async function ingest(options?: { closeMcp?: boolean }) {
                       let items: Record<string, unknown>[] = [];
                       if (Array.isArray(parsedContent)) {
                         items = parsedContent as Record<string, unknown>[];
-                      } else if (typeof parsedContent === "object" && parsedContent !== null) {
+                      } else if (
+                        typeof parsedContent === "object" &&
+                        parsedContent !== null
+                      ) {
                         const rec = parsedContent as Record<string, unknown>;
-                        items = (Array.isArray(rec.repositories)
-                          ? rec.repositories
-                          : Array.isArray(rec.activities)
-                          ? rec.activities
-                          : []) as Record<string, unknown>[];
+                        items = (
+                          Array.isArray(rec.repositories)
+                            ? rec.repositories
+                            : Array.isArray(rec.activities)
+                              ? rec.activities
+                              : []
+                        ) as Record<string, unknown>[];
                       }
-                      
+
                       if (items.length > 0) {
                         let latestTime = 0;
                         for (const item of items) {
-                          const dateStr = (item.start_date || item.updated_at || item.created_at || item.date) as string | undefined;
+                          const dateStr = (item.start_date ||
+                            item.updated_at ||
+                            item.created_at ||
+                            item.date) as string | undefined;
                           if (dateStr) {
                             const t = new Date(dateStr).getTime();
                             if (t > latestTime) {
@@ -213,9 +267,15 @@ async function ingest(options?: { closeMcp?: boolean }) {
                         if (latestTime > 0) {
                           occurredAt = new Date(latestTime);
                         }
-                      } else if (typeof parsedContent === "object" && parsedContent !== null) {
+                      } else if (
+                        typeof parsedContent === "object" &&
+                        parsedContent !== null
+                      ) {
                         const rec = parsedContent as Record<string, unknown>;
-                        const dateStr = (rec.start_date || rec.updated_at || rec.created_at || rec.date) as string | undefined;
+                        const dateStr = (rec.start_date ||
+                          rec.updated_at ||
+                          rec.created_at ||
+                          rec.date) as string | undefined;
                         if (dateStr) {
                           occurredAt = new Date(dateStr);
                         }
@@ -225,8 +285,14 @@ async function ingest(options?: { closeMcp?: boolean }) {
                     // Fallback to current time
                   }
 
-                  const { contentText, rawData } = transformMcpDataToNarrative(content, serverName, task.tool, task);
-                  const mcpCategory = serverName === "strava" ? "dynamic" : "static";
+                  const { contentText, rawData } = transformMcpDataToNarrative(
+                    content,
+                    serverName,
+                    task.tool,
+                    task,
+                  );
+                  const mcpCategory =
+                    serverName === "strava" ? "dynamic" : "static";
                   await pipeline.syncDocument(contentText, {
                     source: `mcp:${serverName}:${task.source}`,
                     category: mcpCategory,
@@ -234,19 +300,28 @@ async function ingest(options?: { closeMcp?: boolean }) {
                     rawData,
                     occurredAt: occurredAt.toISOString(),
                   });
-                  log.success(`✓ Ingested ${task.tool} via MCP tool`);
+                  logger.log("MCP /output: success");
                 }
               } catch (taskErr) {
-                log.warn(`Failed to run ingest tool "${task.tool}" for ${serverName}`, taskErr);
+                log.warn(
+                  `Failed to run ingest tool "${task.tool}" for ${serverName}`,
+                  taskErr,
+                );
               }
             }
           }
         } catch (configErr) {
-          log.error(`Failed to parse mcp_config.json for dynamic ingestion:`, configErr instanceof Error ? configErr.message : String(configErr));
+          log.error(
+            `Failed to parse mcp_config.json for dynamic ingestion:`,
+            configErr instanceof Error ? configErr.message : String(configErr),
+          );
         }
       }
     } catch (err) {
-      log.error(`Failed to ingest from MCP server: ${serverName}`, err instanceof Error ? err.message : String(err));
+      log.error(
+        `Failed to ingest from MCP server: ${serverName}`,
+        err instanceof Error ? err.message : String(err),
+      );
     }
   }
 
@@ -268,7 +343,10 @@ async function ingest(options?: { closeMcp?: boolean }) {
     log.info("Saving vector store...");
     await vectorStore.save();
   } catch (err) {
-    log.error("Failed to save vector store", err instanceof Error ? err.message : String(err));
+    log.error(
+      "Failed to save vector store",
+      err instanceof Error ? err.message : String(err),
+    );
   }
 
   try {
@@ -276,10 +354,13 @@ async function ingest(options?: { closeMcp?: boolean }) {
       await mcpManager.close();
     }
   } catch (err) {
-    log.error("Failed to close MCP manager gracefully", err instanceof Error ? err.message : String(err));
+    log.error(
+      "Failed to close MCP manager gracefully",
+      err instanceof Error ? err.message : String(err),
+    );
   }
 
-  log.info("Ingestion complete!");
+  logger.log("Sync /output");
 }
 
 export { ingest };

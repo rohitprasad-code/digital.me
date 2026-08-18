@@ -2,7 +2,7 @@ import fs from "fs";
 import path from "path";
 import { WEEKLY_REPORT_PROMPT } from "../../model/prompts/weekly_report";
 import { getLLMProvider } from "../../model/providers/provider";
-import { log } from "../../utils/logger";
+import { log, logger } from "../../utils/logger";
 import { REPORTS_DIR } from "../../utils/paths";
 import { VectorStore } from "../../memory/vector_store";
 
@@ -63,7 +63,7 @@ export function registerFormatter(source: string, formatter: ActivityFormatter) 
 
 
 export async function generateWeeklyReport(): Promise<string> {
-  log.info("Generating weekly report...");
+  logger.log("Report /generate");
 
   // 1. Collect Data from Vector Store (previously saved from MCP sync)
   const vectorStore = new VectorStore();
@@ -211,7 +211,7 @@ export async function generateWeeklyReport(): Promise<string> {
   const reportPath = path.join(reportsDir, `${today}.md`);
   fs.writeFileSync(reportPath, reportMarkdown, "utf-8");
 
-  log.info(`Weekly report saved to ${reportPath}`);
+  logger.log("Report /output");
 
   return reportMarkdown;
 }

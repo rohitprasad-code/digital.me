@@ -2,6 +2,7 @@ import { NextRequest } from "next/server";
 import { initializeMcpTools, allToolDefinitions, TOOL_MAP, isInitialized, mcpManager } from "@/model/registry/tools";
 import fs from "fs";
 import path from "path";
+import { logger } from "@/utils/logger";
 
 export async function GET() {
   try {
@@ -91,7 +92,7 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    console.log(`Executing MCP tool: ${toolName} with args:`, toolArgs);
+    logger.log(`MCP /input: ${toolName}`);
     const result = await executor(toolArgs || {});
 
     return new Response(
@@ -106,7 +107,7 @@ export async function POST(req: NextRequest) {
       }
     );
   } catch (error) {
-    console.error("Error executing MCP tool:", error);
+    logger.error("MCP /error: Failed to execute tool", error instanceof Error ? error.message : String(error));
     return new Response(
       JSON.stringify({
         error: "Failed to execute MCP tool",

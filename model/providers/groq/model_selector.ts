@@ -76,7 +76,7 @@ export async function getBestGroqModel(groq: Groq): Promise<string> {
 
       cachedModel = candidates[0].id;
       lastFetchTime = now;
-      console.log(`🤖 Auto-selected Groq model: ${cachedModel}`);
+      console.log(`Groq /model_selected: ${cachedModel}`);
       return cachedModel;
     }
   } catch (error) {

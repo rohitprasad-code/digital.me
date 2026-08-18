@@ -1,6 +1,7 @@
 import { Document, IVectorStore, VectorSearchFilter } from "./types";
 import { PostgresVectorStore } from "./provider/postgres";
 import { JsonVectorStore } from "./provider/json";
+import { logger } from "../../utils/logger";
 
 export * from "./types";
 
@@ -20,28 +21,49 @@ export class VectorStore implements IVectorStore {
   }
 
   async getAllDocuments() {
-    return this.store.getAllDocuments();
+    logger.log("DB /select");
+    const docs = await this.store.getAllDocuments();
+    logger.log("DB /output");
+    return docs;
   }
   setDocuments(docs: Document[]) {
     if (this.store.setDocuments) this.store.setDocuments(docs);
   }
   async deleteDocuments(ids: string[]) {
-    return this.store.deleteDocuments(ids);
+    logger.log("DB /delete");
+    const res = await this.store.deleteDocuments(ids);
+    logger.log("DB /output");
+    return res;
   }
   async deleteStaleDocuments(daysStale: number) {
-    return this.store.deleteStaleDocuments(daysStale);
+    logger.log("DB /delete");
+    const count = await this.store.deleteStaleDocuments(daysStale);
+    logger.log("DB /output");
+    return count;
   }
   async addDocumentsWithEmbeddings(
-    documents: { content: string; embedding: number[]; metadata: Record<string, unknown> }[]
+    documents: {
+      content: string;
+      embedding: number[];
+      metadata: Record<string, unknown>;
+    }[],
   ) {
+    logger.log("DB /insert");
+    let results;
     if (this.store.addDocumentsWithEmbeddings) {
-      return this.store.addDocumentsWithEmbeddings(documents);
+      results = await this.store.addDocumentsWithEmbeddings(documents);
+    } else {
+      results = [];
+      for (const doc of documents) {
+        const res = await this.store.addDocumentWithEmbedding(
+          doc.content,
+          doc.embedding,
+          doc.metadata,
+        );
+        results.push(res);
+      }
     }
-    const results = [];
-    for (const doc of documents) {
-      const res = await this.store.addDocumentWithEmbedding(doc.content, doc.embedding, doc.metadata);
-      results.push(res);
-    }
+    logger.log("DB /output");
     return results;
   }
 
@@ -51,13 +73,26 @@ export class VectorStore implements IVectorStore {
     m?: Record<string, unknown>,
     autoSave?: boolean,
   ) {
-    return this.store.addDocumentWithEmbedding(c, e, m, autoSave);
+    logger.log("DB /insert");
+    const res = await this.store.addDocumentWithEmbedding(c, e, m, autoSave);
+    logger.log("DB /output");
+    return res;
   }
-  async addDocument(c: string, m?: Record<string, unknown>, autoSave?: boolean) {
-    return this.store.addDocument(c, m, autoSave);
+  async addDocument(
+    c: string,
+    m?: Record<string, unknown>,
+    autoSave?: boolean,
+  ) {
+    logger.log("DB /insert");
+    const res = await this.store.addDocument(c, m, autoSave);
+    logger.log("DB /output");
+    return res;
   }
   async search(q: string, l?: number, filter?: VectorSearchFilter) {
-    return this.store.search(q, l, filter);
+    logger.log("DB /select");
+    const results = await this.store.search(q, l, filter);
+    logger.log("DB /output");
+    return results;
   }
   async save() {
     return this.store.save();
@@ -66,19 +101,52 @@ export class VectorStore implements IVectorStore {
     return this.store.load();
   }
   async clear() {
-    return this.store.clear();
+    logger.log("DB /delete");
+    const res = await this.store.clear();
+    logger.log("DB /output");
+    return res;
   }
-  async logHallucination(query: string, response: string, isSafe: boolean, feedback?: string) {
-    return this.store.logHallucination(query, response, isSafe, feedback);
+  async logHallucination(
+    query: string,
+    response: string,
+    isSafe: boolean,
+    feedback?: string,
+  ) {
+    logger.log("DB /insert");
+    const res = await this.store.logHallucination(
+      query,
+      response,
+      isSafe,
+      feedback,
+    );
+    logger.log("DB /output");
+    return res;
   }
   async getHallucinations() {
-    return this.store.getHallucinations();
+    logger.log("DB /select");
+    const logs = await this.store.getHallucinations();
+    logger.log("DB /output");
+    return logs;
   }
   async markHallucinationCorrected(id: string) {
-    return this.store.markHallucinationCorrected(id);
+    logger.log("DB /update");
+    const res = await this.store.markHallucinationCorrected(id);
+    logger.log("DB /output");
+    return res;
   }
-  async getDocumentsByTimeRange(startDate: Date, endDate: Date, sourcePrefix?: string) {
-    return this.store.getDocumentsByTimeRange(startDate, endDate, sourcePrefix);
+  async getDocumentsByTimeRange(
+    startDate: Date,
+    endDate: Date,
+    sourcePrefix?: string,
+  ) {
+    logger.log("DB /select");
+    const docs = await this.store.getDocumentsByTimeRange(
+      startDate,
+      endDate,
+      sourcePrefix,
+    );
+    logger.log("DB /output");
+    return docs;
   }
   async close() {
     if (this.store.close) {

@@ -8,8 +8,14 @@
  *   3. Repeats until the LLM produces a final text response
  */
 
-import { TOOL_MAP, toolSchemas, initializeMcpTools, isInitialized } from "../registry/tools";
+import {
+  TOOL_MAP,
+  toolSchemas,
+  initializeMcpTools,
+  isInitialized,
+} from "../registry/tools";
 import Groq from "groq-sdk";
+import { logger } from "../../utils/logger";
 import type {
   ChatCompletionMessageParam,
   ChatCompletionTool,
@@ -81,7 +87,7 @@ export async function runAgentLoop(
       const fnName = toolCall.function.name;
       const fnArgs = JSON.parse(toolCall.function.arguments || "{}");
 
-      console.log(`🔧 Tool call: ${fnName}(${JSON.stringify(fnArgs)})`);
+      logger.log(`MCP /input: ${fnName}`);
 
       let result: unknown;
       try {
@@ -97,12 +103,15 @@ export async function runAgentLoop(
         };
       }
 
-      console.log(
-        `✅ Tool result: ${JSON.stringify(result).substring(0, 200)}...`,
+      const resultStr = JSON.stringify(result);
+      logger.log(
+        `MCP /output: ${resultStr.substring(0, 100).replace(/\n/g, " ")}${resultStr.length > 100 ? "..." : ""}`,
       );
 
       if (toolOutputs) {
-        toolOutputs.push(`Tool "${fnName}" called with arguments ${JSON.stringify(fnArgs)} returned: ${JSON.stringify(result)}`);
+        toolOutputs.push(
+          `Tool "${fnName}" called with arguments ${JSON.stringify(fnArgs)} returned: ${JSON.stringify(result)}`,
+        );
       }
 
       messages.push({
@@ -127,7 +136,11 @@ export async function runAgentLoop(
     ...({ reasoning_effort: "none" } as Record<string, unknown>),
   });
 
-  let fallbackContent = fallback.choices[0]?.message?.content || "I could not complete the request.";
-  fallbackContent = fallbackContent.replace(/<think>[\s\S]*?<\/think>/g, "").trim();
+  let fallbackContent =
+    fallback.choices[0]?.message?.content ||
+    "I could not complete the request.";
+  fallbackContent = fallbackContent
+    .replace(/<think>[\s\S]*?<\/think>/g, "")
+    .trim();
   return fallbackContent;
 }

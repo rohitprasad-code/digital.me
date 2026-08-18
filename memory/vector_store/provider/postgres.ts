@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from "uuid";
 import crypto from "crypto";
 import postgres from "postgres";
 import { Document, VectorSearchFilter, HallucinationLog } from "../types";
+import { logger } from "../../../utils/logger";
 
 let sql: postgres.Sql;
 
@@ -13,6 +14,7 @@ function getDb() {
       ssl: "require",
       max: 10,
       idle_timeout: 15,
+      onnotice: (n) => logger.log(`DB /notice: ${n.message}`),
     });
   }
   return sql;
@@ -30,7 +32,10 @@ export class PostgresVectorStore {
         id: row.id,
         filePath: row.file_path,
         content: row.content,
-        metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
+        metadata:
+          typeof row.metadata === "string"
+            ? JSON.parse(row.metadata)
+            : row.metadata,
         lastUpdatedAt: row.last_updated_at,
         occurredAt: row.occurred_at,
       }));
@@ -72,7 +77,11 @@ export class PostgresVectorStore {
   }
 
   async addDocumentsWithEmbeddings(
-    documents: { content: string; embedding: number[]; metadata: Record<string, unknown> }[]
+    documents: {
+      content: string;
+      embedding: number[];
+      metadata: Record<string, unknown>;
+    }[],
   ): Promise<Document[]> {
     if (documents.length === 0) return [];
     const db = getDb();
@@ -83,7 +92,10 @@ export class PostgresVectorStore {
         (doc.metadata._contentHash as string) ||
         crypto.createHash("sha256").update(doc.content).digest("hex");
 
-      const metadata: Record<string, unknown> = { ...doc.metadata, _contentHash: contentHash };
+      const metadata: Record<string, unknown> = {
+        ...doc.metadata,
+        _contentHash: contentHash,
+      };
 
       let filePath = "unknown";
       const source = metadata.source as string;
@@ -95,7 +107,9 @@ export class PostgresVectorStore {
         }
       } else {
         filePath =
-          (metadata.filePath as string) || (metadata.path as string) || "unknown";
+          (metadata.filePath as string) ||
+          (metadata.path as string) ||
+          "unknown";
       }
 
       const occurredAtVal = metadata.occurredAt
@@ -123,7 +137,7 @@ export class PostgresVectorStore {
             JSON.stringify(doc.metadata),
             JSON.stringify(doc.embedding),
             doc.occurredAt.toISOString(),
-          ])
+          ]),
         )}
         ON CONFLICT ((metadata->>'_contentHash')) 
         DO UPDATE SET last_updated_at = NOW(), occurred_at = EXCLUDED.occurred_at
@@ -149,7 +163,9 @@ export class PostgresVectorStore {
     _autoSave?: boolean,
   ): Promise<Document> {
     void _autoSave;
-    const results = await this.addDocumentsWithEmbeddings([{ content, embedding, metadata }]);
+    const results = await this.addDocumentsWithEmbeddings([
+      { content, embedding, metadata },
+    ]);
     return results[0];
   }
 
@@ -160,7 +176,12 @@ export class PostgresVectorStore {
   ): Promise<Document> {
     const embeddingProvider = getEmbeddingProvider();
     const embedding = await embeddingProvider.embed(content);
-    return this.addDocumentWithEmbedding(content, embedding, metadata, autoSave);
+    return this.addDocumentWithEmbedding(
+      content,
+      embedding,
+      metadata,
+      autoSave,
+    );
   }
 
   private async pureVectorSearch(
@@ -171,13 +192,16 @@ export class PostgresVectorStore {
     const db = getDb();
 
     const categoryVal = filter?.category
-      ? (Array.isArray(filter.category) ? filter.category : [filter.category])
+      ? Array.isArray(filter.category)
+        ? filter.category
+        : [filter.category]
       : null;
     const hasCategory = !!categoryVal;
 
-    const excludeCategories = filter?.excludeCategory && filter.excludeCategory.length > 0
-      ? filter.excludeCategory
-      : null;
+    const excludeCategories =
+      filter?.excludeCategory && filter.excludeCategory.length > 0
+        ? filter.excludeCategory
+        : null;
     const hasExclude = !!excludeCategories;
 
     const extraFilters: Record<string, unknown> = {};
@@ -244,13 +268,16 @@ export class PostgresVectorStore {
       }
 
       const categoryVal = filter?.category
-        ? (Array.isArray(filter.category) ? filter.category : [filter.category])
+        ? Array.isArray(filter.category)
+          ? filter.category
+          : [filter.category]
         : null;
       const hasCategory = !!categoryVal;
 
-      const excludeCategories = filter?.excludeCategory && filter.excludeCategory.length > 0
-        ? filter.excludeCategory
-        : null;
+      const excludeCategories =
+        filter?.excludeCategory && filter.excludeCategory.length > 0
+          ? filter.excludeCategory
+          : null;
       const hasExclude = !!excludeCategories;
 
       const extraFilters: Record<string, unknown> = {};
@@ -313,14 +340,20 @@ export class PostgresVectorStore {
           id: row.id,
           filePath: row.file_path,
           content: row.content,
-          metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
+          metadata:
+            typeof row.metadata === "string"
+              ? JSON.parse(row.metadata)
+              : row.metadata,
           lastUpdatedAt: row.last_updated_at,
           occurredAt: row.occurred_at,
         },
         score: parseFloat(row.score),
       }));
     } catch (error) {
-      console.warn("Hybrid search (RRF) failed, falling back to vector search:", error);
+      console.warn(
+        "Hybrid search (RRF) failed, falling back to vector search:",
+        error,
+      );
       return this.pureVectorSearch(queryEmbedding, limit, filter);
     }
   }
@@ -331,22 +364,26 @@ export class PostgresVectorStore {
 
   async load(): Promise<void> {
     const db = getDb();
-    console.log("Initializing Neon Postgres Vector Store schemas...");
+    logger.log("DB /init");
     try {
       let dimension = 768;
       try {
         const embeddingProvider = getEmbeddingProvider();
-        const testVector = await embeddingProvider.embed("dimension_detection_ping");
+        const testVector = await embeddingProvider.embed(
+          "dimension_detection_ping",
+        );
         if (testVector && testVector.length > 0) {
           dimension = testVector.length;
-          console.log(`Auto-detected embedding dimension: ${dimension}`);
         }
       } catch (err) {
-        console.warn("Failed to auto-detect embedding dimensions, falling back to default (768):", err);
+        console.warn(
+          "Failed to auto-detect embedding dimensions, falling back to default (768):",
+          err,
+        );
       }
 
       await db`CREATE EXTENSION IF NOT EXISTS vector;`;
-      
+
       // Use unsafe raw query because the dimension parameter must be interpolated structurally
       await db.unsafe(`
         CREATE TABLE IF NOT EXISTS document_chunks (
@@ -378,7 +415,7 @@ export class PostgresVectorStore {
       await db`CREATE INDEX IF NOT EXISTS document_chunks_metadata_idx ON document_chunks USING GIN (metadata);`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_occurred_at_idx ON document_chunks (occurred_at DESC);`;
       await db`CREATE INDEX IF NOT EXISTS document_chunks_content_fts_idx ON document_chunks USING gin(to_tsvector('english', content));`;
-      console.log("Vector store successfully initialized.");
+      logger.log("DB /ready");
     } catch (error) {
       console.error("Failed to initialize database schema:", error);
     }
@@ -397,7 +434,10 @@ export class PostgresVectorStore {
         VALUES (${query}, ${response}, ${isSafe}, ${feedback || null})
       `;
     } catch (error) {
-      console.error("Failed to log hallucination check to Neon Postgres:", error);
+      console.error(
+        "Failed to log hallucination check to Neon Postgres:",
+        error,
+      );
     }
   }
 
@@ -415,11 +455,16 @@ export class PostgresVectorStore {
         response: row.response,
         isSafe: row.isSafe,
         feedback: row.feedback,
-        createdAt: row.createdAt ? new Date(row.createdAt).toISOString() : new Date().toISOString(),
+        createdAt: row.createdAt
+          ? new Date(row.createdAt).toISOString()
+          : new Date().toISOString(),
         corrected: !!row.corrected,
       }));
     } catch (e) {
-      console.error("Failed to fetch hallucination logs from Neon Postgres:", e);
+      console.error(
+        "Failed to fetch hallucination logs from Neon Postgres:",
+        e,
+      );
       return [];
     }
   }
@@ -433,7 +478,10 @@ export class PostgresVectorStore {
         WHERE id = ${id}
       `;
     } catch (error) {
-      console.error("Failed to mark hallucination corrected in Neon Postgres:", error);
+      console.error(
+        "Failed to mark hallucination corrected in Neon Postgres:",
+        error,
+      );
     }
   }
 
@@ -456,12 +504,18 @@ export class PostgresVectorStore {
         id: row.id,
         filePath: row.file_path,
         content: row.content,
-        metadata: typeof row.metadata === "string" ? JSON.parse(row.metadata) : row.metadata,
+        metadata:
+          typeof row.metadata === "string"
+            ? JSON.parse(row.metadata)
+            : row.metadata,
         lastUpdatedAt: row.last_updated_at,
         occurredAt: row.occurred_at,
       }));
     } catch (error) {
-      console.error("Failed to get documents by time range from Postgres:", error);
+      console.error(
+        "Failed to get documents by time range from Postgres:",
+        error,
+      );
       return [];
     }
   }
