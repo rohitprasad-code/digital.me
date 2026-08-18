@@ -35,7 +35,8 @@ Do not include any other text, reasoning, or markdown. Output only the exact req
 
   try {
     const result = await provider.chat([
-      { role: "system", content: systemPrompt }
+      { role: "system", content: systemPrompt },
+      { role: "user", content: "Verify if the Assistant's Response is fully grounded in and supported by the provided Context." }
     ]);
 
     const content = result.content.trim();

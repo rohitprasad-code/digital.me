@@ -14,7 +14,11 @@ function getDb() {
       ssl: "require",
       max: 10,
       idle_timeout: 15,
-      onnotice: (n) => logger.log(`DB /notice: ${n.message}`),
+      onnotice: (n) => {
+        if (n.message && !n.message.includes("already exists") && !n.message.includes("skipping")) {
+          logger.log(`DB /notice: ${n.message}`);
+        }
+      },
     });
   }
   return sql;

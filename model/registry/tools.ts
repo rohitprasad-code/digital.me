@@ -14,10 +14,13 @@ export const TOOL_MAP: Record<
 export const toolSchemas: Record<string, unknown>[] = [];
 export let isInitialized = false;
 
-export async function initializeMcpTools() {
-  if (isInitialized && mcpManager.getClients().size > 0) return;
+export async function initializeMcpTools(relevantServers?: string[]) {
+  const connectedClients = mcpManager.getClients();
+  if (isInitialized && relevantServers && relevantServers.every(s => connectedClients.has(s))) {
+    return;
+  }
   try {
-    await mcpManager.init();
+    await mcpManager.init(relevantServers);
     isInitialized = true;
     
     // Clear existing tools

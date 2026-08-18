@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
+import fs from "fs";
+import path from "path";
 import { getLLMProvider } from "@/model/providers/provider";
 import {
   getSystemPrompt,
@@ -19,6 +21,7 @@ import { logger } from "@/utils/logger";
 
 const vectorStore = new VectorStore();
 const router = new MemoryRouter();
+let isDbInitialized = false;
 
 export async function GET() {
   try {
@@ -91,32 +94,63 @@ export async function POST(req: NextRequest) {
           detectedMode = await router.detectIntent(lastMessage.content);
         }
 
-        // Initialize MCP tools if not already initialized
-        if (!isInitialized) {
-          try {
-            await initializeMcpTools();
-          } catch (mcpErr) {
-            console.error(
-              "Failed to initialize MCP tools during chat:",
-              mcpErr,
+        // Dynamically detect relevant MCP servers based on query keywords to prevent starting unused processes
+        let relevantServers: string[] | undefined = undefined;
+        try {
+          const configPath = path.resolve(process.cwd(), "mcp_config.json");
+          if (fs.existsSync(configPath)) {
+            const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+            const mcpServers = config.mcpServers || {};
+            relevantServers = Object.keys(mcpServers).filter(serverName => 
+              router.isToolRelevant(serverName, lastMessage.content)
             );
           }
+        } catch (e) {
+          console.error("Failed to parse mcp_config.json to filter relevant servers", e);
         }
 
         try {
-          await vectorStore.load();
+          await initializeMcpTools(relevantServers);
+        } catch (mcpErr) {
+          console.error(
+            "Failed to initialize MCP tools during chat:",
+            mcpErr,
+          );
+        }
+
+        try {
+          if (!isDbInitialized) {
+            await vectorStore.load();
+            isDbInitialized = true;
+          }
           // Concentric Ring 1: Category-filtered search based on routed memory type
           const memoryType = await router.route(lastMessage.content);
           const targetCategory = getCategoryForMemoryType(memoryType);
 
-          const dbSearchPromise = vectorStore.search(lastMessage.content, 10, {
-            category: targetCategory,
-          });
-
+          let dbSearchPromise = Promise.resolve<{ doc: any; score: number }[]>([]);
           let mcpSearchPromise = Promise.resolve("");
+
+          const queryLower = lastMessage.content.toLowerCase();
+
+          // Skip database vector search for small talk or pure realtime presence requests to make it faster
+          const isConversational = targetCategory === "conversational";
+          const isPurePresence = targetCategory === "dynamic" && (
+            queryLower.includes("doing") || 
+            queryLower.includes("active app") || 
+            queryLower.includes("presence") || 
+            queryLower.includes("workstation")
+          );
+
+          if (!isConversational && !isPurePresence) {
+            dbSearchPromise = vectorStore.search(lastMessage.content, 10, {
+              category: targetCategory,
+            });
+          }
+
           if (targetCategory === "dynamic") {
             const dynamicMcpTasks: Promise<string>[] = [];
             const registeredTools = registry.listTools();
+            const queryLower = lastMessage.content.toLowerCase();
 
             const stravaTool = registeredTools.find(
               (t) =>
@@ -130,7 +164,7 @@ export async function POST(req: NextRequest) {
               (t) => t.name === "presence-monitor_get_presence_status",
             );
 
-            if (stravaTool) {
+            if (stravaTool && router.isToolRelevant(stravaTool.name, lastMessage.content)) {
               dynamicMcpTasks.push(
                 stravaTool
                   .execute({ limit: 5 })
@@ -141,7 +175,7 @@ export async function POST(req: NextRequest) {
                   .catch(() => ""),
               );
             }
-            if (githubTool) {
+            if (githubTool && router.isToolRelevant(githubTool.name, lastMessage.content)) {
               dynamicMcpTasks.push(
                 githubTool
                   .execute({})
@@ -152,7 +186,7 @@ export async function POST(req: NextRequest) {
                   .catch(() => ""),
               );
             }
-            if (presenceTool) {
+            if (presenceTool && router.isToolRelevant(presenceTool.name, lastMessage.content)) {
               dynamicMcpTasks.push(
                 presenceTool
                   .execute({})
@@ -222,12 +256,22 @@ export async function POST(req: NextRequest) {
     );
 
     // Initialize MCP tools if not already initialized
-    if (!isInitialized) {
+    try {
+      const lastUserMsg = messages.length > 0 ? messages[messages.length - 1].content : "";
+      let relevantServers: string[] | undefined = undefined;
       try {
-        await initializeMcpTools();
-      } catch (mcpErr) {
-        console.error("Failed to initialize MCP tools during chat:", mcpErr);
-      }
+        const configPath = path.resolve(process.cwd(), "mcp_config.json");
+        if (fs.existsSync(configPath)) {
+          const config = JSON.parse(fs.readFileSync(configPath, "utf-8"));
+          const mcpServers = config.mcpServers || {};
+          relevantServers = Object.keys(mcpServers).filter(serverName => 
+            router.isToolRelevant(serverName, lastUserMsg)
+          );
+        }
+      } catch (e) {}
+      await initializeMcpTools(relevantServers);
+    } catch (mcpErr) {
+      console.error("Failed to initialize MCP tools during chat:", mcpErr);
     }
 
     // Use agent loop with tool calling

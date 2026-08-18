@@ -29,6 +29,7 @@ export class MemoryRouter {
     dynamicKeywords: string[];
     recruiterKeywords: string[];
     socialKeywords: string[];
+    mcpToolTriggers?: Record<string, string[]>;
   };
 
   constructor(useLLM: boolean = false) {
@@ -117,6 +118,13 @@ export class MemoryRouter {
         "chill",
         "what do you do for fun",
       ],
+      mcpToolTriggers: {
+        strava: ["run", "running", "ran", "swim", "swimming", "swam", "bike", "biking", "cycled", "activity", "workout", "heart rate", "pace", "calories", "strava", "health", "physical", "exercise"],
+        github: ["github", "repo", "code", "commit", "project", "developer", "repository", "coding", "programming"],
+        presence: ["presence", "doing", "active", "app", "workstation", "computer", "mac", "macbook", "work", "focus"],
+        "web-search": ["search", "google", "web", "find", "who is", "weather", "latest", "news", "current", "recent", "info", "lookup"],
+        "smart-home": ["smart", "home", "device", "light", "switch", "plug", "bulb", "network", "scan", "iot"]
+      }
     };
 
     try {
@@ -128,6 +136,23 @@ export class MemoryRouter {
       console.warn("Failed to load router config, using defaults", e);
     }
     return defaultKeywords;
+  }
+
+  isToolRelevant(toolName: string, query: string): boolean {
+    const lowerQuery = query.toLowerCase();
+    const triggers = this.config.mcpToolTriggers || {};
+    
+    // Check if the toolName matches any trigger key (e.g. "strava", "github", "presence")
+    for (const [key, keywords] of Object.entries(triggers)) {
+      if (toolName.toLowerCase().includes(key)) {
+        return keywords.some((kw) => 
+          new RegExp(`\\b${kw}\\b`, "i").test(lowerQuery) || lowerQuery.includes(kw)
+        );
+      }
+    }
+    
+    // Default to true if no trigger config matches the tool prefix (so other tools aren't blocked)
+    return true;
   }
 
   // ---------- Memory routing (which store to search) ----------

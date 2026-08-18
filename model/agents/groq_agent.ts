@@ -23,6 +23,35 @@ import type {
 import { getBestGroqModel } from "../providers/groq/model_selector";
 
 const MAX_TOOL_ROUNDS = 5; // safety limit to prevent infinite loops
+const DEFAULT_TOOL_TIMEOUT_MS = 10000; // 10 seconds timeout per tool execution
+const CONCURRENCY_LIMIT = 5; // run up to 5 tools concurrently
+
+function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+  return Promise.race([
+    promise,
+    new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error(`Tool execution timed out after ${timeoutMs}ms`)), timeoutMs)
+    ),
+  ]);
+}
+
+async function runWithLimit<T>(tasks: (() => Promise<T>)[], limit: number): Promise<T[]> {
+  const results: T[] = new Array(tasks.length);
+  const executing = new Set<Promise<void>>();
+
+  for (let i = 0; i < tasks.length; i++) {
+    const p = (async () => {
+      results[i] = await tasks[i]();
+    })();
+    executing.add(p);
+    p.then(() => executing.delete(p));
+    if (executing.size >= limit) {
+      await Promise.race(executing);
+    }
+  }
+  await Promise.all(executing);
+  return results;
+}
 
 function getGroqClient(): Groq {
   const apiKey = process.env.GROQ_API_KEY;
@@ -82,44 +111,55 @@ export async function runAgentLoop(
     // Append the assistant's message (with tool calls) to the conversation
     messages.push(assistantMessage);
 
-    // Execute each tool call and append results
-    for (const toolCall of assistantMessage.tool_calls) {
-      const fnName = toolCall.function.name;
-      const fnArgs = JSON.parse(toolCall.function.arguments || "{}");
-
-      logger.log(`MCP /input: ${fnName}`);
-
-      let result: unknown;
-      try {
-        const executor = TOOL_MAP[fnName];
-        if (!executor) {
-          result = { error: `Unknown tool: ${fnName}` };
-        } else {
-          result = await executor(fnArgs);
+    // Execute tool calls concurrently with batching/limit and timeout protection
+    const toolTasks = assistantMessage.tool_calls.map((toolCall) => {
+      return async () => {
+        const fnName = toolCall.function.name;
+        let fnArgs: Record<string, unknown> = {};
+        try {
+          fnArgs = JSON.parse(toolCall.function.arguments || "{}");
+        } catch (e) {
+          logger.error(`Failed to parse tool arguments for ${fnName}`, e instanceof Error ? e.message : String(e));
         }
-      } catch (error) {
-        result = {
-          error: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
-        };
-      }
 
-      const resultStr = JSON.stringify(result);
-      logger.log(
-        `MCP /output: ${resultStr.substring(0, 100).replace(/\n/g, " ")}${resultStr.length > 100 ? "..." : ""}`,
-      );
+        logger.log(`MCP /input: ${fnName}`);
 
-      if (toolOutputs) {
-        toolOutputs.push(
-          `Tool "${fnName}" called with arguments ${JSON.stringify(fnArgs)} returned: ${JSON.stringify(result)}`,
+        let result: unknown;
+        try {
+          const executor = TOOL_MAP[fnName];
+          if (!executor) {
+            result = { error: `Unknown tool: ${fnName}` };
+          } else {
+            // Apply timeout to the tool execution
+            result = await withTimeout(executor(fnArgs), DEFAULT_TOOL_TIMEOUT_MS);
+          }
+        } catch (error) {
+          result = {
+            error: `Tool execution failed: ${error instanceof Error ? error.message : String(error)}`,
+          };
+        }
+
+        const resultStr = JSON.stringify(result);
+        logger.log(
+          `MCP /output: ${resultStr.substring(0, 100).replace(/\n/g, " ")}${resultStr.length > 100 ? "..." : ""}`,
         );
-      }
 
-      messages.push({
-        role: "tool",
-        tool_call_id: toolCall.id,
-        content: JSON.stringify(result),
-      });
-    }
+        if (toolOutputs) {
+          toolOutputs.push(
+            `Tool "${fnName}" called with arguments ${JSON.stringify(fnArgs)} returned: ${JSON.stringify(result)}`,
+          );
+        }
+
+        return {
+          role: "tool" as const,
+          tool_call_id: toolCall.id,
+          content: JSON.stringify(result),
+        };
+      };
+    });
+
+    const results = await runWithLimit(toolTasks, CONCURRENCY_LIMIT);
+    messages.push(...results);
   }
 
   // Safety: if we hit the max rounds, ask the LLM to summarize

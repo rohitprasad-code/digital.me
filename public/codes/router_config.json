@@ -75,7 +75,13 @@
     "book",
     "food",
     "vibe",
-    "chill",
-    "what do you do for fun"
-  ]
+    "chill"
+  ],
+  "mcpToolTriggers": {
+    "strava": ["run", "running", "ran", "swim", "swimming", "swam", "bike", "biking", "cycled", "activity", "workout", "heart rate", "pace", "calories", "strava", "health", "physical", "exercise"],
+    "github": ["github", "repo", "code", "commit", "project", "developer", "repository", "coding", "programming"],
+    "presence": ["presence", "doing", "active", "app", "workstation", "computer", "mac", "macbook", "work", "focus"],
+    "web-search": ["search", "google", "web", "find", "who is", "weather", "latest", "news", "current", "recent", "info", "lookup"],
+    "smart-home": ["smart", "home", "device", "light", "switch", "plug", "bulb", "network", "scan", "iot"]
+  }
 }
