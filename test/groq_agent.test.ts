@@ -4,7 +4,7 @@ import { runAgentLoop } from "../model/agents/groq_agent";
 // Mock registry tools module to avoid initializing real MCP clients and clearing maps.
 // Path must resolve to `/Users/rohitprasad/Backup/digital-me/model/registry/tools`
 vi.mock("../model/registry/tools", () => {
-  const TOOL_MAP: Record<string, any> = {};
+  const TOOL_MAP: Record<string, (args: Record<string, unknown>) => Promise<unknown>> = {};
   return {
     TOOL_MAP,
     toolSchemas: [],
@@ -47,9 +47,10 @@ describe("Groq Agent Concurrent Loop & Edge Cases", () => {
     const { TOOL_MAP } = await import("../model/registry/tools");
 
     // Register test tools in TOOL_MAP
-    TOOL_MAP["test_tool_success"] = async (args: any) => {
+    TOOL_MAP["test_tool_success"] = async (args: Record<string, unknown>) => {
       executedTools.push("success");
-      return { val: args.x * 2 };
+      const x = typeof args.x === "number" ? args.x : 0;
+      return { val: x * 2 };
     };
 
     TOOL_MAP["test_tool_fail"] = async () => {

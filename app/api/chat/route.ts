@@ -11,7 +11,7 @@ import { VectorStore } from "@/memory/vector_store";
 import { MemoryRouter, getCategoryForMemoryType } from "@/memory/router";
 import { runAgentLoop } from "@/model/agents/groq_agent";
 import { runAgentLoop as runJsonAgentLoop } from "@/model/agents/json_agent";
-import { initializeMcpTools, isInitialized } from "@/model/registry/tools";
+import { initializeMcpTools } from "@/model/registry/tools";
 import { registry } from "@/model/registry/unified";
 
 import { verifyGrounding } from "@/model/middleware/grounding";
@@ -127,7 +127,7 @@ export async function POST(req: NextRequest) {
           const memoryType = await router.route(lastMessage.content);
           const targetCategory = getCategoryForMemoryType(memoryType);
 
-          let dbSearchPromise = Promise.resolve<{ doc: any; score: number }[]>([]);
+          let dbSearchPromise = Promise.resolve<{ doc: { content: string }; score: number }[]>([]);
           let mcpSearchPromise = Promise.resolve("");
 
           const queryLower = lastMessage.content.toLowerCase();
@@ -150,7 +150,6 @@ export async function POST(req: NextRequest) {
           if (targetCategory === "dynamic") {
             const dynamicMcpTasks: Promise<string>[] = [];
             const registeredTools = registry.listTools();
-            const queryLower = lastMessage.content.toLowerCase();
 
             const stravaTool = registeredTools.find(
               (t) =>
@@ -268,7 +267,7 @@ export async function POST(req: NextRequest) {
             router.isToolRelevant(serverName, lastUserMsg)
           );
         }
-      } catch (e) {}
+      } catch {}
       await initializeMcpTools(relevantServers);
     } catch (mcpErr) {
       console.error("Failed to initialize MCP tools during chat:", mcpErr);
