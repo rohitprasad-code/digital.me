@@ -51,7 +51,6 @@ COPY --from=builder /digital-me/cli              ./cli
 COPY --from=builder /digital-me/jobs             ./jobs
 COPY --from=builder /digital-me/memory           ./memory
 COPY --from=builder /digital-me/model            ./model
-COPY --from=builder /digital-me/integrations     ./integrations
 COPY --from=builder /digital-me/utils            ./utils
 COPY --from=builder /digital-me/scripts          ./scripts
 COPY --from=builder /digital-me/tsconfig.json    ./tsconfig.json

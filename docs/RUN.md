@@ -70,11 +70,11 @@ Run the app inside an isolated container using Groq as the cloud LLM provider.
 Expose your Docker instance to the internet — no port forwarding or static IP needed.
 
 1. Create a tunnel at [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → **Networks** → **Tunnels**.
-2. Copy the tunnel token into `docker-compose.yml` (under the `tunnel` service).
+2. Copy the tunnel token into `docker-compose.yml` (under the `digital-me-gate-tunnel` service).
 3. Add a public hostname in the Cloudflare dashboard:
    - **Subdomain**: e.g. `digital`
    - **Domain**: e.g. `rohitprasad.dev`
-   - **Service URL**: `http://app:7001` (use the Docker service name, **not** `localhost`)
+   - **Service URL**: `http://digital-me:7001` (use the Docker service name, **not** `localhost`)
 4. Start with the tunnel profile:
    ```bash
    docker compose -f docker/docker-compose.yml --profile tunnel up -d
@@ -89,7 +89,7 @@ Your app is live at `https://digital.yourdomain.dev` 🚀
 Scale the app horizontally:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --scale app=3
+docker compose -f docker/docker-compose.yml up -d --scale digital-me=3
 ```
 
 > **Note:** Remove `container_name` and use a port range (e.g. `"7001-7003:7001"`) when scaling. The Cloudflare Tunnel auto-balances across replicas.

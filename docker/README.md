@@ -85,8 +85,8 @@ docker exec -it digital-me npm run cli chat
 
 | Service | Container | Port | Profile | Description |
 |---------|-----------|------|---------|-------------|
-| `app` | `digital-me` | 7001 | default | Next.js web UI + API + CLI |
-| `tunnel` | `digital-me-tunnel` | — | `tunnel` | Cloudflare Tunnel (public access) |
+| `digital-me` | `digital-me` | 7001 | default | Next.js web UI + API + CLI |
+| `digital-me-gate-tunnel` | `digital-me-gate-tunnel` | — | `tunnel` | Cloudflare Tunnel (public access) |
 | `scheduler` | `digital-me-scheduler` | — | `scheduler` | Cron jobs |
 
 ## Volume Mounts
@@ -105,16 +105,16 @@ Expose the app to the internet via Cloudflare Tunnel — no port forwarding or s
 
 1. Go to [Cloudflare Zero Trust](https://one.dash.cloudflare.com/) → **Networks** → **Tunnels** → **Create a tunnel**
 2. Name it (e.g. `digital`) and copy the tunnel token
-3. Paste the token in `docker-compose.yml` under the `tunnel` service's `command`
+3. Paste the token in `docker-compose.yml` under the `digital-me-gate-tunnel` service's `command`
 4. In the Cloudflare dashboard, **Add a public hostname**:
 
    | Field | Value |
    |-------|-------|
    | Subdomain | `digital` (or whatever you want) |
    | Domain | your domain (e.g. `rohitprasad.dev`) |
-   | **Service URL** | **`http://app:7001`** |
+       | **Service URL** | **`http://digital-me:7001`** |
 
-   > **Important:** Use `http://app:7001` (the Docker service name), **not** `localhost:7001` — the tunnel runs inside a container.
+    > **Important:** Use `http://digital-me:7001` (the Docker service name), **not** `localhost:7001` — the tunnel runs inside a container.
 
 5. Start with the tunnel profile:
 
@@ -129,10 +129,10 @@ Your app is now live at `https://digital.yourdomain.dev` 🚀
 Scale the app horizontally by running multiple replicas:
 
 ```bash
-docker compose -f docker/docker-compose.yml up -d --scale app=3
+docker compose -f docker/docker-compose.yml up -d --scale digital-me=3
 ```
 
-> **Note:** When using `--scale`, remove `container_name` and fixed `ports` from the `app` service in `docker-compose.yml`, and use a port range instead (e.g. `"7001-7003:7001"`). The Cloudflare Tunnel will load-balance across replicas automatically since it routes to the `app` service.
+> **Note:** When using `--scale`, remove `container_name` and fixed `ports` from the `digital-me` service in `docker-compose.yml`, and use a port range instead (e.g. `"7001-7003:7001"`). The Cloudflare Tunnel will load-balance across replicas automatically since it routes to the `digital-me` service.
 
 ## Scheduler (optional)
 
@@ -149,7 +149,7 @@ docker compose -f docker/docker-compose.yml --profile scheduler up -d
 docker compose -f docker/docker-compose.yml logs -f
 
 # View app logs only
-docker compose -f docker/docker-compose.yml logs -f app
+docker compose -f docker/docker-compose.yml logs -f digital-me
 
 # Stop everything
 docker compose -f docker/docker-compose.yml down
@@ -170,4 +170,4 @@ docker compose -f docker/docker-compose.yml ps
 | Build fails on M-series Mac | Ensure Docker Desktop is updated and Rosetta is enabled |
 | Port 7001 already in use | Stop any local dev server: `npm run dev` or similar |
 | CLI chat times out | The CLI connects to the API inside the container — ensure the container is running first |
-| Tunnel can't reach app | Service URL must be `http://app:7001` (not `localhost`) — they share a Docker network |
+| Tunnel can't reach app | Service URL must be `http://digital-me:7001` (not `localhost`) — they share a Docker network |

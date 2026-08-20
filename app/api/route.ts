@@ -1,5 +1,5 @@
 import { NextResponse } from "next/server";
-import { getLLMProvider } from "@/model/llm/provider";
+import { getLLMProvider } from "@/model/providers/provider";
 
 export async function GET() {
   try {
